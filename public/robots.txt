@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /dashboard/
+Disallow: /checkout/
+Disallow: /api/
+Allow: /
+
+Sitemap: https://sintetix.vercel.app/sitemap.xml
