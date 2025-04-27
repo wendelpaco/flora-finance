@@ -12,6 +12,13 @@ interface handleFinanceiroParams {
   plano: Plan;
 }
 
+function capitalize(text: string): string {
+  return text
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export async function handleFinanceiro({
   sock,
   phone,
@@ -21,20 +28,6 @@ export async function handleFinanceiro({
   const agora = new Date();
   const ano = agora.getFullYear();
   const mes = agora.getMonth() + 1;
-
-  const textoLower = text.toLowerCase();
-  const isMensagemFinanceira =
-    textoLower.includes("gastei") ||
-    textoLower.includes("ganhei") ||
-    textoLower.includes("recebi") ||
-    textoLower.includes("paguei") ||
-    textoLower.includes("comprei") ||
-    textoLower.includes("vendi");
-
-  if (!isMensagemFinanceira) {
-    logInfo(`🔍 Mensagem ignorada (não financeira): ${text}`);
-    return;
-  }
 
   let tipo: "gasto" | "ganho" | null = null;
   let valor = 0;
@@ -104,12 +97,32 @@ export async function handleFinanceiro({
 
   const totalMes = total._sum.amount || 0;
 
+  // Definir emojis por categoria
+  const emojisPorCategoria: { [categoria: string]: string } = {
+    transporte: "🚗",
+    alimentação: "🛒",
+    lazer: "🎉",
+    saúde: "🩺",
+    assinaturas: "📺",
+    vestuário: "👕",
+    dívidas: "💳",
+    outros: "💸",
+    salário: "💼",
+    freelance: "🧑‍💻",
+    presente: "🎁",
+    "outros-ganhos": "💵",
+  };
+  // Seleciona o emoji da categoria (caso não encontre, usa 💬 como padrão)
+  const emojiCategoria = emojisPorCategoria[categoria.toLowerCase()] || "💬";
+  // Mensagem formatada nova
   let mensagem = `✅ ${
     tipo === "gasto" ? "Gasto" : "Ganho"
-  } registrado: R$${valor.toFixed(2)} (${descricao})\n`;
+  } registrado: R$${valor.toFixed(
+    2
+  )}\n${emojiCategoria} Categoria: ${capitalize(categoria)}\n`;
 
   if (plano === Plan.FREE) {
-    mensagem += `💬 Seu total de ${
+    mensagem += `📈 Seu total de ${
       tipo === "gasto" ? "gastos" : "ganhos"
     } este mês é R$${totalMes.toFixed(2)}.`;
   } else if (plano === Plan.BASIC) {
@@ -144,74 +157,5 @@ export async function handleFinanceiro({
 
   await sock.sendMessage(`${phone}@s.whatsapp.net`, {
     text: mensagem,
-  });
-}
-
-export async function editarRegistro({
-  sock,
-  phone,
-  text,
-}: Omit<handleFinanceiroParams, "plano">) {
-  const regexEditar = /editar\s+(.*?)\s+para\s+(\d+(?:[.,]\d+)?)/i;
-  const match = text.match(regexEditar);
-
-  if (!match) {
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-      text: "❌ Não consegui entender o que você quer editar. Use o formato: 'Editar [descrição] para [novo valor]'.",
-    });
-    return;
-  }
-
-  const descricaoAntiga = match[1].trim();
-  const novoValor = parseFloat(match[2].replace(",", "."));
-
-  const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user) {
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-      text: `❌ Usuário não encontrado.`,
-    });
-    return;
-  }
-
-  const registroExistente = await prisma.transaction.findFirst({
-    where: {
-      userId: user.id,
-      description: {
-        contains: descricaoAntiga,
-        mode: "insensitive",
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  if (!registroExistente) {
-    logError(
-      `Tentativa de edição falhou: Não encontrado "${descricaoAntiga}" para telefone ${phone}`
-    );
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-      text: `❌ Não encontrei nenhum gasto ou ganho relacionado a "${descricaoAntiga}".`,
-    });
-    return;
-  }
-
-  await prisma.transaction.update({
-    where: {
-      id: registroExistente.id,
-    },
-    data: {
-      amount: novoValor,
-    },
-  });
-
-  logInfo(
-    `📝 [Edição] Telefone: ${phone} | De: ${registroExistente.amount} para: ${novoValor} | Descrição: ${registroExistente.description}`
-  );
-
-  await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-    text: `✅ Registro atualizado: "${
-      registroExistente.description
-    }" agora é R$${novoValor.toFixed(2)}.`,
   });
 }

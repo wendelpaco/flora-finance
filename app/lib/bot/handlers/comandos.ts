@@ -1,10 +1,8 @@
-import {
-  handleFinanceiro,
-  editarRegistro,
-} from "../../../lib/bot/services/financeiro";
 import { WASocket } from "@whiskeysockets/baileys";
 import { Plan, PrismaClient } from "@prisma/client"; // Importar Plan
 import { logError, logInfo } from "../utils/logger";
+import { financeiroFilter } from "../filters/financeiro-filter";
+import { handleEdicao } from "./edicao";
 
 const prisma = new PrismaClient();
 
@@ -18,7 +16,7 @@ export async function handleComando(
   // Buscar o plano do usuário no banco de dados
   const usuarioBanco = await prisma.user.findUnique({
     where: { phone },
-    select: { plan: true },
+    select: { id: true, plan: true },
   });
   const plano = usuarioBanco?.plan || Plan.FREE;
 
@@ -31,8 +29,8 @@ export async function handleComando(
 
 Você tem acesso a todos os recursos! ✨
 
-- Registrar gasto: "Gastei 50 reais no mercado"
-- Registrar ganho: "Recebi 1000 reais de salário"
+- Registrar gasto por texto ou áudio: "Gastei 50 reais no mercado" 🎤
+- Registrar ganho por texto ou áudio: "Recebi 1000 reais de salário" 🎤
 - Ver resumo mensal: "Resumo abril"
 - Excluir registro: "Excluir mercado 50"
 - Criar metas financeiras (em breve!)
@@ -53,6 +51,8 @@ Use comandos simples para gerenciar suas finanças:
 - Registrar ganho: "Recebi 1000 reais de salário"
 - Ver resumo mensal: "Resumo abril"
 - Excluir registro: "Excluir mercado 50"
+
+📣 *Novidade para usuários PRO:* Agora também é possível registrar gastos e ganhos enviando áudios! 🎤
 
 Para mais informações: /comandos`,
         });
@@ -401,12 +401,12 @@ Lá você poderá optar pelo plano Free, Basic ou Pro de acordo com suas necessi
     text.toLowerCase().includes("recebi") ||
     text.toLowerCase().includes("ganhei")
   ) {
-    await handleFinanceiro({ sock, phone, text, plano });
+    await financeiroFilter({ sock, phone, text, plano });
     return true;
   }
 
   if (text.toLowerCase().startsWith("editar")) {
-    await editarRegistro({ sock, phone, text });
+    await handleEdicao(sock, phone, usuarioBanco!, text);
     return true;
   }
 

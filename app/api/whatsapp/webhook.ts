@@ -32,7 +32,7 @@
 //       create: { phone },
 //     });
 
-//     if (text.toLowerCase().includes("resumo")) {
+//     if (text.toLowerCase().startsWith("resumo")) {
 //       const resumo = await generateSummary(user.id);
 //       await sock.sendMessage(msg.key.remoteJid!, { text: resumo });
 //       return;

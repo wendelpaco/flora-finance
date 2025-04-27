@@ -23,8 +23,10 @@ export async function financeiroFilter({
     textoLower.includes("recebi") ||
     textoLower.includes("paguei") ||
     textoLower.includes("comprei") ||
-    textoLower.includes("vendi");
-
+    textoLower.includes("vendi") ||
+    textoLower.includes("editar") ||
+    textoLower.includes("alterar") ||
+    textoLower.includes("modificar");
   if (!isMensagemFinanceira) {
     logInfo(`🔍 Mensagem ignorada (não financeira): ${text}`);
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
