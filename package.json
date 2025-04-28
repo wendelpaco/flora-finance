@@ -11,7 +11,8 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "bot2": "npx tsx scripts/whatsapp-bot.ts",
-    "bot": "npx tsx watch app/lib/bot/bot.ts"
+    "bot": "npx tsx watch ./messaging/bot/bot.ts",
+    "test": "npx tsx watch ./messaging/bot/services/openai.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -35,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
     "form-data": "^4.0.2",
     "framer-motion": "^12.7.4",
     "html2canvas": "^1.4.1",
