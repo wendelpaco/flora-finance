@@ -13,7 +13,7 @@ export class SubscriptionCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`📝 [Comando] /inscricao solicitado por ${phone}`);
+      logInfo(`📝 [COMANDO] /inscricao solicitado por ${phone}`);
 
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: `🛒 *Planos Flora Finance:*

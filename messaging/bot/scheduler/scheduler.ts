@@ -9,7 +9,8 @@ import prisma from "../../../lib/prisma";
 
 // Function to generate daily summary
 export function startDailySummary(sock: WASocket) {
-  cron.schedule("0 21 * * *", async () => {
+  cron.schedule("0 18 * * *", async () => {
+    // Send daily summary at 18:00
     logInfo("⏰ [Agendado] Enviando resumos diários...");
 
     const users = await prisma.user.findMany({
@@ -18,8 +19,13 @@ export function startDailySummary(sock: WASocket) {
 
     for (const user of users) {
       try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Filtra o dia de hoje
         const transacoes = await prisma.transaction.findMany({
-          where: { userId: user.id },
+          where: {
+            userId: user.id,
+            createdAt: { gte: today }, // Transações de hoje
+          },
         });
 
         // Separate transactions into gastos and ganhos
@@ -58,10 +64,18 @@ export function startDailySummary(sock: WASocket) {
           throw new Error("Erro ao gerar o resumo com o OpenAI.");
         }
 
+        // Format the date for inclusion in the summary (DD/MM/YYYY)
+        const formattedDate = `${today
+          .getDate()
+          .toString()
+          .padStart(2, "0")}/${(today.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}/${today.getFullYear()}`;
+
         // Send the summary to the user via WhatsApp
         await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: `
-🌟 *Resumo Diário* 🌟
+🌟 *Resumo Diário - ${formattedDate}* 🌟
 
 💰 *Total de Ganhos:* R$ ${resumo.totalGanhos.toFixed(2)}
 🛒 *Total de Gastos:* R$ ${resumo.totalGastos.toFixed(2)}
@@ -91,7 +105,8 @@ ${resumo.resumoTexto}
 
 // Function to generate weekly summary
 export function startWeeklySummary(sock: WASocket) {
-  cron.schedule("0 18 * * 0", async () => {
+  cron.schedule("0 20 * * 0", async () => {
+    // Send weekly summary at 20:00 on Sundays
     logInfo("⏰ [Agendado] Enviando resumos semanais...");
 
     const users = await prisma.user.findMany({
@@ -100,8 +115,13 @@ export function startWeeklySummary(sock: WASocket) {
 
     for (const user of users) {
       try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // Ajusta para 7 dias atrás
         const transacoes = await prisma.transaction.findMany({
-          where: { userId: user.id },
+          where: {
+            userId: user.id,
+            createdAt: { gte: sevenDaysAgo }, // Transações dos últimos 7 dias
+          },
         });
 
         // Separate transactions into gastos and ganhos
@@ -140,10 +160,18 @@ export function startWeeklySummary(sock: WASocket) {
           throw new Error("Erro ao gerar o resumo com o OpenAI.");
         }
 
+        // Format the date for inclusion in the summary (DD/MM/YYYY)
+        const now = new Date();
+        const formattedDate = `${now.getDate().toString().padStart(2, "0")}/${(
+          now.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}/${now.getFullYear()}`;
+
         // Send the summary to the user via WhatsApp
         await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: `
-🌟 *Resumo Semanal* 🌟
+🌟 *Resumo Semanal - Semana de ${formattedDate}* 🌟
 
 💰 *Total de Ganhos:* R$ ${resumo.totalGanhos.toFixed(2)}
 🛒 *Total de Gastos:* R$ ${resumo.totalGastos.toFixed(2)}

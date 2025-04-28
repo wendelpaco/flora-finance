@@ -28,8 +28,12 @@ export async function handleAudioMessage(
       return;
     }
 
-    logInfo(`✍️ Texto transcrito de ${phone}: ${textoTranscrito}`);
-
+    logInfo(
+      `✍️ [TEXTO TRANSCRITO] - DE: ${user.phone} | MENSAGEM: ${textoTranscrito}`
+    );
+    //-------------------------------------------------//
+    //   BUGFIX- Melhorar captura do comando resumo
+    //-------------------------------------------------//
     if (textoTranscrito.toLowerCase().startsWith("resumo")) {
       await handleResumo(sock, phone, user, textoTranscrito);
     } else if (textoTranscrito.toLowerCase().startsWith("excluir")) {
@@ -45,7 +49,9 @@ export async function handleAudioMessage(
       });
     }
   } catch (error) {
-    logError(`❌ Erro ao interpretar áudio de ${phone}: ${error}`);
+    logError(
+      `❌ [ERROR] - ERRO AO INTERPRETAR ÁUDIO | NOME: ${user.phone} | MENSAGEM:${error}`
+    );
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
       text: "❌ Ocorreu um erro ao interpretar seu áudio. Pode tentar mandar em texto? 📩",
     });

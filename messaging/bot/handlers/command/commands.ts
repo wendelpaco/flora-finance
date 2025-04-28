@@ -12,7 +12,7 @@ export class CommandsCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`📚 [Comando] /comandos solicitado por ${phone}`);
+      logInfo(`📚 [COMANDO] /comandos solicitado por ${phone}`);
 
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: `📜 *Comandos Disponíveis*:

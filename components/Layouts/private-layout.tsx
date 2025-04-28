@@ -33,7 +33,7 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
             !isSidebarOpen && "text-sm"
           )}
         >
-          {isSidebarOpen ? "Sintetix" : "S"}
+          {isSidebarOpen ? "Flora Finance" : "FF"}
         </div>
         <nav className="flex flex-col gap-2">
           {ITEMMENU.map(({ label, href, icon: Icon }) => {
@@ -59,7 +59,11 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
                     {isSidebarOpen && <span>{label}</span>}
                   </button>
                 ) : href ? (
-                  <Link href={href} className={commonClasses}>
+                  <Link
+                    href={href}
+                    className={commonClasses}
+                    onClick={() => setIsSidebarOpen(false)}
+                  >
                     <Icon className={iconClasses} />
                     {isSidebarOpen && <span>{label}</span>}
                   </Link>
@@ -70,6 +74,7 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
         </nav>
       </aside>
 
+      {/* Toggle Button */}
       <div
         className={clsx(
           "absolute z-50 transition-all duration-300 ease-in-out",

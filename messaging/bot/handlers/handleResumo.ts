@@ -148,6 +148,6 @@ ${resumo.resumoTexto}
   }
 
   logInfo(
-    `📈 [Resumo enviado] Mês: ${mesEncontrado || "Todos"} | Usuário: ${phone}`
+    `📈 [RESUMO ENVIADO] Mês: ${mesEncontrado || "Todos"} | Usuário: ${phone}`
   );
 }

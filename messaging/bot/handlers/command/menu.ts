@@ -12,7 +12,7 @@ export class MenuCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`📚 [Comando] /menu solicitado por ${phone}`);
+      logInfo(`📚 [COMANDO] /menu solicitado por ${phone}`);
 
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: `🌟 *Menu Flora Finance*:

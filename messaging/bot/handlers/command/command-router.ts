@@ -7,6 +7,7 @@ import { MenuCommand } from "./menu";
 import { CommandsCommand } from "./commands";
 import { SubscriptionCommand } from "./subscription";
 import { OnboardingCommand } from "./onboarding";
+import { SummaryDayCommand } from "./summary-day";
 
 const commandsMap: { [key: string]: Command } = {
   "/ajuda": new HelpCommand(),
@@ -15,6 +16,7 @@ const commandsMap: { [key: string]: Command } = {
   "/comandos": new CommandsCommand(),
   "/inscricao": new SubscriptionCommand(),
   "/onboarding": new OnboardingCommand(),
+  "/resumodia": new SummaryDayCommand(),
 };
 
 export async function handleCommand(

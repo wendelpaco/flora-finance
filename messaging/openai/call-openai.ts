@@ -25,7 +25,7 @@ export async function callOpenAI(
 
     if (!content) {
       logError(
-        `[OpenAI] ❌ [RESPOSTA VAZIA] - [PLANO]: ${plano}, [PROMPT]: ${prompt.slice(
+        `🤖 [OpenAI] - [RESPOSTA VAZIA] - [PLANO]: ${plano}, [PROMPT]: ${prompt.slice(
           0,
           50
         )}...`
@@ -34,7 +34,7 @@ export async function callOpenAI(
     }
 
     logInfo(
-      `[OpenAI] ✅ [RESPOSTA RECEBIDA] - [MODELO]: ${model}, [PLANO]: ${plano}`
+      `🤖 [OpenAI] - [RESPOSTA RECEBIDA] - [MODELO]: ${model}, [PLANO]: ${plano}`
     );
     return content.trim();
   } catch (error) {

@@ -12,7 +12,7 @@ export class OnboardingCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`👋 [Onboarding] Novo usuário iniciado: ${phone}`);
+      logInfo(`👋 [COMANDO] Novo usuário iniciado: ${phone}`);
 
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: `🌿 *Seja bem-vindo(a) ao Flora Finance!*  

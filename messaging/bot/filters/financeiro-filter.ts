@@ -46,7 +46,7 @@ export async function financeiroFilter({
     textoLower.includes(keyword)
   );
   if (!isMensagemFinanceira) {
-    logInfo(`🔍 Mensagem ignorada (não financeira): ${text}`);
+    logInfo(`🔍 [MENSAGEM IGNORADA] - NÃO FINANCEIRA: ${text}`);
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
       text: `👋 Oi! Para registrar um gasto ou ganho, envie mensagens como:\n\n- "Gastei 50 reais no mercado"\n- "Recebi 200 reais de freelance"\n\nConte comigo para ajudar no seu controle financeiro! 📈✨`,
     });

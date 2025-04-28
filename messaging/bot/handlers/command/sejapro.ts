@@ -11,7 +11,7 @@ export class SejaProCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`🏆 [Comando] /sejapro solicitado por ${phone}`);
+      logInfo(`🏆 [COMANDO] /sejapro solicitado por ${phone}`);
 
       if (plano === Plan.PRO) {
         await sock.sendMessage(`${phone}@s.whatsapp.net`, {

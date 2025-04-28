@@ -34,12 +34,12 @@ export async function startBot() {
       const shouldReconnect =
         lastDisconnect?.error instanceof Boom &&
         lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
-      logError(`🔴 Bot desconectado. Reconnect? ${shouldReconnect}`);
+      logError(`🔴🔴🔴 [BOT DESCONECTADO] 🔴🔴🔴 ${shouldReconnect}`);
       if (shouldReconnect) {
         startBot();
       }
     } else if (connection === "open") {
-      logInfo(`🟢 Bot conectado com sucesso!`);
+      logInfo(`🟢🟢🟢 [BOT CONECTADO COM SUCESSO] 🟢🟢🟢`);
     }
   });
 
@@ -69,7 +69,8 @@ export async function startBot() {
       return;
     }
 
-    const user = await ensureUserExists(phone);
+    const user = await ensureUserExists(phone, `${msg.pushName}`);
+
     try {
       if (msg.message.audioMessage) {
         await handleAudioMessage(sock, phone, user, msg);
@@ -77,7 +78,9 @@ export async function startBot() {
         await handleTextMessage(sock, phone, user, text);
       }
     } catch (error) {
-      logError(`❌ Erro ao processar mensagem de ${phone}: ${error}`);
+      logError(
+        `❌ [ERRO] - ERRO AO PROCESSAR IMAGEM | TELEFONE: ${phone} | MENSAGEM: ${error}`
+      );
     }
   });
 }

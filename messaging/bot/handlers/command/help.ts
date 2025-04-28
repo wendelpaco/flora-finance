@@ -11,7 +11,7 @@ export class HelpCommand implements Command {
     plano: Plan
   ): Promise<boolean> {
     try {
-      logInfo(`📚 [Comando] /ajuda solicitado por ${phone}`);
+      logInfo(`📚 [COMANDO] /ajuda solicitado por ${phone}`);
 
       if (plano === Plan.PRO) {
         await sock.sendMessage(`${phone}@s.whatsapp.net`, {

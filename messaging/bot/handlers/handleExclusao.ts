@@ -53,7 +53,7 @@ export async function handleExclusao(
     const tipoTexto = registro.type === "GANHO" ? "Ganho" : "Gasto";
 
     logInfo(
-      `🗑️ [${tipoTexto} excluído] Telefone: ${phone} | Valor: R$${parsed.valor} | Categoria: ${parsed.categoria}`
+      `🗑️ [${tipoTexto} EXCLUÍDO] - TELEFONE: ${phone} | VALOR: R$${parsed.valor} | CATEGORIA: ${parsed.categoria}`
     );
 
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
@@ -61,7 +61,7 @@ export async function handleExclusao(
     });
   } catch (error) {
     logError(
-      `Erro ao tentar excluir registro para o telefone ${phone}: ${error}`
+      ` ❌ [ERRO AO TENTAR EXCLUIR REGISTRO] - TELEFONE ${phone} | MESSAGE: ${error}`
     );
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
       text: `❌ Ocorreu um erro ao tentar excluir seu registro. Por favor, tente novamente.`,
