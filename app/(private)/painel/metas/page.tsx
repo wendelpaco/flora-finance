@@ -19,6 +19,7 @@ import {
 } from "react-icons/hi";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/UserHeader";
+import { EmptyState } from "@/components/empty-state";
 
 export default function MetasPage() {
   const [metas, setMetas] = useState([
@@ -58,87 +59,31 @@ export default function MetasPage() {
           Defina e acompanhe metas financeiras personalizadas.
         </p>
 
-        <Card className="shadow-md border border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle>Nova Meta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!novaMeta.nome.trim() || !novaMeta.valor || !novaMeta.prazo)
-                  return;
-
-                setMetas((prev) => [
-                  ...prev,
-                  {
-                    ...novaMeta,
-                    valor: parseFloat(novaMeta.valor),
-                    progresso: 0,
-                  },
-                ]);
-                setNovaMeta({ nome: "", valor: "", prazo: "" });
-                toast({
-                  title: "Meta criada",
-                  description: "Meta adicionada com sucesso!",
-                });
-              }}
-              className="grid md:grid-cols-3 gap-4"
-            >
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Nome da Meta
-                </label>
-                <Input
-                  placeholder="Ex: Viagem para o Chile"
-                  value={novaMeta.nome}
-                  onChange={(e) =>
-                    setNovaMeta((m) => ({ ...m, nome: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Valor Desejado (R$)
-                </label>
-                <Input
-                  type="number"
-                  placeholder="R$ 5.000,00"
-                  value={novaMeta.valor}
-                  onChange={(e) =>
-                    setNovaMeta((m) => ({ ...m, valor: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Prazo
-                </label>
-                <Input
-                  type="date"
-                  value={novaMeta.prazo}
-                  onChange={(e) =>
-                    setNovaMeta((m) => ({ ...m, prazo: e.target.value }))
-                  }
-                />
-              </div>
-              <Button
-                type="submit"
-                className="col-span-full bg-emerald-600 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 ring-1 ring-emerald-700/30 hover:ring-emerald-700"
-              >
-                <HiOutlinePlusCircle className="w-4 h-4" />
-                Adicionar
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => setModalAberto(true)}
+        >
+          <HiOutlinePlusCircle className="w-4 h-4 mr-2" />
+          Nova Meta
+        </Button>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {metas.length === 0 && (
-            <Card className="col-span-full p-6 text-center text-muted-foreground border-dashed border-2 border-gray-300 dark:border-gray-700">
-              <HiOutlineFlag className="w-8 h-8 mx-auto mb-2" />
-              <p>Nenhuma meta cadastrada ainda. Crie a sua primeira meta!</p>
-            </Card>
+            <div className="col-span-full">
+              <EmptyState
+                icon={<HiOutlineFlag className="w-8 h-8" />}
+                message="Nenhuma meta cadastrada ainda. Crie sua primeira meta para acompanhar seus sonhos!"
+                action={
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => setModalAberto(true)}
+                  >
+                    <HiOutlinePlusCircle className="w-4 h-4 mr-2" />
+                    Criar meta
+                  </Button>
+                }
+              />
+            </div>
           )}
           {metas.map((meta, index) => (
             <Card
@@ -193,8 +138,9 @@ export default function MetasPage() {
                         const atualizadas = metas.filter((_, i) => i !== index);
                         setMetas(atualizadas);
                         toast({
-                          title: "Meta excluída!",
-                          description: "Você pode desfazer essa ação.",
+                          title: "Meta excluída! 🗑️",
+                          description:
+                            "Você pode desfazer essa ação se quiser.",
                           duration: 5000,
                           action: (
                             <Button
@@ -226,7 +172,9 @@ export default function MetasPage() {
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Editar Meta</DialogTitle>
+              <DialogTitle>
+                {metaEditando !== null ? "Editar Meta" : "Nova Meta"}
+              </DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {
@@ -235,21 +183,36 @@ export default function MetasPage() {
                   return;
                 setIsSubmitting(true);
 
-                setMetas((prev) =>
-                  prev.map((meta, i) =>
-                    i === metaEditando
-                      ? {
-                          ...novaMeta,
-                          valor: parseFloat(novaMeta.valor),
-                          progresso: prev[i].progresso,
-                        }
-                      : meta
-                  )
-                );
-                toast({
-                  title: "Meta atualizada",
-                  description: "Meta editada com sucesso!",
-                });
+                if (metaEditando !== null) {
+                  setMetas((prev) =>
+                    prev.map((meta, i) =>
+                      i === metaEditando
+                        ? {
+                            ...novaMeta,
+                            valor: parseFloat(novaMeta.valor),
+                            progresso: prev[i].progresso,
+                          }
+                        : meta
+                    )
+                  );
+                  toast({
+                    title: "🎉 Meta atualizada!",
+                    description: `A meta "${novaMeta.nome}" foi editada com sucesso.`,
+                  });
+                } else {
+                  setMetas((prev) => [
+                    ...prev,
+                    {
+                      ...novaMeta,
+                      valor: parseFloat(novaMeta.valor),
+                      progresso: 0,
+                    },
+                  ]);
+                  toast({
+                    title: "✨ Meta criada!",
+                    description: `A meta "${novaMeta.nome}" foi adicionada com sucesso.`,
+                  });
+                }
                 setMetaEditando(null);
                 setNovaMeta({ nome: "", valor: "", prazo: "" });
                 setModalAberto(false);
@@ -294,6 +257,34 @@ export default function MetasPage() {
                   }
                 />
               </div>
+
+              {/* Sugestões rápidas */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sugestões rápidas
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Viagem", "Fundo Emergência", "Curso", "Carro", "Casa"].map(
+                    (sugestao) => (
+                      <Button
+                        key={sugestao}
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() =>
+                          setNovaMeta((m) => ({
+                            ...m,
+                            nome: sugestao,
+                          }))
+                        }
+                      >
+                        {sugestao}
+                      </Button>
+                    )
+                  )}
+                </div>
+              </div>
+
               <DialogFooter className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -303,17 +294,54 @@ export default function MetasPage() {
                     setMetaEditando(null);
                     setNovaMeta({ nome: "", valor: "", prazo: "" });
                   }}
+                  disabled={isSubmitting}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Salvando..." : "Salvar"}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {isSubmitting ? (
+                    <svg
+                      className="animate-spin h-5 w-5 mr-2 text-white inline-block"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
+                    </svg>
+                  ) : null}
+                  {isSubmitting
+                    ? "Salvando..."
+                    : metaEditando !== null
+                    ? "Salvar"
+                    : "Adicionar"}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+      <Button
+        onClick={() => setModalAberto(true)}
+        className="fixed bottom-6 right-6 md:hidden bg-emerald-600 hover:bg-emerald-700 shadow-lg rounded-full px-4 py-3 text-sm"
+      >
+        <HiOutlinePlusCircle className="w-5 h-5" />
+      </Button>
     </div>
   );
 }
