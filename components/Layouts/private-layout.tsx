@@ -5,9 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { HiMenuAlt2, HiX } from "react-icons/hi";
-import ToasterPrivate from "../Toaster/ToasterPrivate";
 import { signOut } from "next-auth/react";
-import { ITEMMENU } from "../../lib/item-menu";
+import { ITEMMENU } from "@/lib/item-menu";
 
 export function PrivateLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -20,7 +19,6 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-emerald-50 to-emerald-100">
       {/* Sidebar */}
-      <ToasterPrivate />
       <aside
         className={clsx(
           "fixed z-40 inset-y-0 left-0 bg-white border-r shadow-sm transition-all duration-300 ease-in-out md:relative flex flex-col",
@@ -95,7 +93,7 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Conteúdo principal */}
-      <main className="flex-1 w-full min-h-screen p-6 md:p-10 overflow-y-auto">
+      <main className="flex-1 w-full min-h-screen p-6 pt-10 md:pt-10 md:px-10 overflow-y-auto">
         {children}
       </main>
     </div>

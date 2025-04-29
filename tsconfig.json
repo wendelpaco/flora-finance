@@ -19,6 +19,12 @@
     "strict": true,
     "noEmit": true,
     "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
     "plugins": [
       {
         "name": "next"

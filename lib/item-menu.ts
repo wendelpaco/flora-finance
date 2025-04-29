@@ -1,47 +1,47 @@
 import {
-  // HistoryIcon,
-  Sparkles,
-  // UserCircle,
-  // GiftIcon,
-  LayoutDashboard,
-  Coins,
-  LogOut,
-} from "lucide-react";
+  HiOutlineChartBar,
+  HiOutlineSwitchHorizontal,
+  HiOutlineTag,
+  HiOutlineFlag,
+  HiOutlineBell,
+  HiOutlineCog,
+  HiOutlineLogout,
+} from "react-icons/hi";
 
 export const ITEMMENU = [
   {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    label: "Visão Geral",
+    href: "/painel",
+    icon: HiOutlineChartBar,
   },
   {
-    label: "Meus Resumos",
-    href: "/summaries",
-    icon: Sparkles,
+    label: "Transações",
+    href: "/painel/transacoes",
+    icon: HiOutlineSwitchHorizontal,
   },
   {
-    label: "Comprar Créditos",
-    href: "/pricing",
-    icon: Coins,
+    label: "Categorias",
+    href: "/painel/categorias",
+    icon: HiOutlineTag,
   },
-  // {
-  //   label: "Histórico",
-  //   href: "/dashboard/historico",
-  //   icon: HistoryIcon,
-  // },
-  // {
-  //   label: "Indique um Amigo",
-  //   href: "/referral-bonus",
-  //   icon: GiftIcon,
-  // },
-  // {
-  //   label: "Minha Conta",
-  //   href: "/app",
-  //   icon: UserCircle,
-  // },
+  {
+    label: "Metas",
+    href: "/painel/metas",
+    icon: HiOutlineFlag,
+  },
+  {
+    label: "Alertas",
+    href: "/painel/alertas",
+    icon: HiOutlineBell,
+  },
+  {
+    label: "Configurações",
+    href: "/painel/configuracoes",
+    icon: HiOutlineCog,
+  },
   {
     label: "Sair",
     href: "/logout",
-    icon: LogOut,
+    icon: HiOutlineLogout,
   },
 ];
