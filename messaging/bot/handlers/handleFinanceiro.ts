@@ -66,16 +66,10 @@ export async function handleFinanceiro({
     },
   });
 
-  logInfo(
-    `🟢 [NOVO ${tipo.toUpperCase()}] Telefone: ${phone} | Descrição: ${desc} | Valor: R$${valor.toFixed(
-      2
-    )} | Categoria: ${categoria}`
-  );
-
-  const total = await prisma.transaction.aggregate({
+  const ganhos = await prisma.transaction.aggregate({
     where: {
       userId: user.id,
-      type: tipo.toUpperCase() as "GASTO" | "GANHO",
+      type: "GANHO",
       createdAt: {
         gte: new Date(`${ano}-${String(mes).padStart(2, "0")}-01`),
         lte: new Date(`${ano}-${String(mes).padStart(2, "0")}-31`),
@@ -86,7 +80,27 @@ export async function handleFinanceiro({
     },
   });
 
-  const saldoAtual = total._sum.amount || 0;
+  const gastos = await prisma.transaction.aggregate({
+    where: {
+      userId: user.id,
+      type: "GASTO",
+      createdAt: {
+        gte: new Date(`${ano}-${String(mes).padStart(2, "0")}-01`),
+        lte: new Date(`${ano}-${String(mes).padStart(2, "0")}-31`),
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const saldoAtual = (ganhos._sum.amount || 0) - (gastos._sum.amount || 0);
+
+  logInfo(
+    `🟢 [NOVO ${tipo.toUpperCase()}] Telefone: ${phone} | Descrição: ${desc} | Valor: R$${valor.toFixed(
+      2
+    )} | Categoria: ${categoria}`
+  );
 
   const mensagem = formatTransactionMessage({
     descricao: desc,

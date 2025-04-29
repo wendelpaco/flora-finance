@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 // import { getServerSession } from "next-auth"; // Suponho que usa next-auth
 import prisma from "../../../lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const periodo =
+    (searchParams.get("periodo") as "hoje" | "semana" | "mes") || "mes";
+
   try {
     // const session = await getServerSession(authOptions);
 
@@ -19,7 +23,17 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const transactions = user.transactions;
+    let transactions = user.transactions;
+
+    // Filtrar transações conforme o período
+    const now = new Date();
+    if (periodo === "hoje") {
+      transactions = transactions.filter((t) => sameDay(t.date, now));
+    } else if (periodo === "semana") {
+      transactions = transactions.filter((t) => inSameWeek(t.date, now));
+    } else if (periodo === "mes") {
+      transactions = transactions.filter((t) => sameMonth(t.date, now));
+    }
 
     const totalGanhos = transactions
       .filter((t) => t.type === "GANHO")
@@ -35,7 +49,7 @@ export async function GET() {
     const ganhosPorCategoria: Record<string, number> = {};
 
     for (const t of transactions) {
-      const categoria = t.category || "Outros";
+      const categoria = t.category || "outros" || "outros-ganhos";
       if (t.type === "GASTO") {
         gastosPorCategoria[categoria] =
           (gastosPorCategoria[categoria] || 0) + t.amount;
@@ -47,11 +61,9 @@ export async function GET() {
 
     const recentTransactions = transactions
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .slice(0, 5);
+      .slice(0, 10);
 
     // Novo agrupamento para histórico
-    const now = new Date();
-
     const historicoDiario: { dia: string; ganhos: number; gastos: number }[] =
       [];
     const historicoSemanal: {
@@ -69,11 +81,11 @@ export async function GET() {
       // Dia da semana abreviado (ex: 'seg', 'ter')
       const label = day.toLocaleDateString("pt-BR", { weekday: "short" });
 
-      const ganhosDia = transactions
+      const ganhosDia = user.transactions
         .filter((t) => t.type === "GANHO" && sameDay(t.date, day))
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosDia = transactions
+      const gastosDia = user.transactions
         .filter((t) => t.type === "GASTO" && sameDay(t.date, day))
         .reduce((acc, t) => acc + t.amount, 0);
 
@@ -90,11 +102,11 @@ export async function GET() {
       startOfWeek.setDate(startOfWeek.getDate() - i * 7);
       const label = `Semana ${6 - i}`;
 
-      const ganhosSemana = transactions
+      const ganhosSemana = user.transactions
         .filter((t) => t.type === "GANHO" && inSameWeek(t.date, startOfWeek))
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosSemana = transactions
+      const gastosSemana = user.transactions
         .filter((t) => t.type === "GASTO" && inSameWeek(t.date, startOfWeek))
         .reduce((acc, t) => acc + t.amount, 0);
 
@@ -110,11 +122,11 @@ export async function GET() {
       const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const label = month.toLocaleDateString("pt-BR", { month: "short" });
 
-      const ganhosMes = transactions
+      const ganhosMes = user.transactions
         .filter((t) => t.type === "GANHO" && sameMonth(t.date, month))
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosMes = transactions
+      const gastosMes = user.transactions
         .filter((t) => t.type === "GASTO" && sameMonth(t.date, month))
         .reduce((acc, t) => acc + t.amount, 0);
 
@@ -125,7 +137,22 @@ export async function GET() {
       });
     }
 
+    const categorias = Object.entries(gastosPorCategoria).map(
+      ([nome, valor]) => ({
+        nome,
+        valor,
+      })
+    );
+
+    const categoriasGanhos = Object.entries(ganhosPorCategoria).map(
+      ([nome, valor]) => ({
+        nome,
+        valor,
+      })
+    );
+
     return NextResponse.json({
+      username: user.name,
       saldo,
       totalGanhos,
       totalGastos,
@@ -137,6 +164,12 @@ export async function GET() {
         semanal: historicoSemanal,
         mensal: historicoMensal,
       },
+      saldosMensais: historicoMensal.map((item) => ({
+        mes: item.mes,
+        saldo: item.ganhos - item.gastos,
+      })),
+      categorias,
+      categoriasGanhos, // novo campo adicionado
     });
   } catch (error) {
     console.error("[DASHBOARD_SUMMARY]", error);

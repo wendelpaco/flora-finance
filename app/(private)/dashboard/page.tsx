@@ -1,738 +1,426 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
-import { Doughnut, Bar, Line } from "react-chartjs-2";
+import { useState, useEffect, useRef } from "react";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
   CategoryScale,
   LinearScale,
-  BarElement,
-  LineElement,
   PointElement,
-  Title,
+  LineElement,
+  Tooltip,
+  Legend,
+  type ChartData,
+  type ChartOptions,
 } from "chart.js";
+import { motion } from "framer-motion";
 import { CardDashboard } from "../../../components/ui/card-dashboard";
+import { DoughnutChart } from "../../../components/ui/doughnut-chart";
+import { TransactionTable } from "../../../components/ui/transaction-table";
+import { Transaction } from "../../types/Transaction";
 
 ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
   CategoryScale,
   LinearScale,
-  BarElement,
-  LineElement,
   PointElement,
-  Title
+  LineElement,
+  Tooltip,
+  Legend
 );
 
-interface Transaction {
-  id: string;
-  description: string;
-  amount: number;
-  type: "GANHO" | "GASTO";
-  category?: string;
-  date: string;
+interface Categoria {
+  nome: string;
+  valor: number;
 }
 
 export default function DashboardPage() {
-  const objetivoFinanceiro = {
-    nome: "Viagem para Europa",
-    valorObjetivo: 10000,
-    dataLimite: new Date(new Date().getFullYear(), 11, 31), // 31 de dezembro deste ano
-  };
+  const [name, setName] = useState("");
+  const [periodo, setPeriodo] = useState<"hoje" | "semana" | "mes">("mes");
   const [saldo, setSaldo] = useState(0);
   const [ganhos, setGanhos] = useState(0);
   const [gastos, setGastos] = useState(0);
-  const [gastosPorCategoria, setGastosPorCategoria] = useState<
-    Record<string, number>
-  >({});
-  const [ganhosPorCategoria, setGanhosPorCategoria] = useState<
-    Record<string, number>
-  >({});
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-    []
-  );
-  // Novo estado para o período (diário, semanal, mensal)
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">(
-    "monthly"
-  );
-
-  const [historico, setHistorico] = useState<{
-    diario: { dia: string; ganhos: number; gastos: number }[];
-    semanal: { semana: string; ganhos: number; gastos: number }[];
-    mensal: { mes: string; ganhos: number; gastos: number }[];
-  }>({ diario: [], semanal: [], mensal: [] });
-
-  // Estado para saldo anterior
   const [saldoAnterior, setSaldoAnterior] = useState(0);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriasGanhos, setCategoriasGanhos] = useState<Categoria[]>([]);
+  const [transacoes, setTransacoes] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saldosMensais, setSaldosMensais] = useState<
+    { mes: string; saldo: number }[]
+  >([]);
+
+  const saldoProjetado = saldo + (saldo - saldoAnterior) * 6;
+
+  const chartRef = useRef<ChartJS<"line", (number | null)[], string> | null>(
+    null
+  );
 
   useEffect(() => {
-    async function fetchSummary() {
-      const res = await fetch("/api/summary");
+    async function carregarDashboard() {
+      setLoading(true);
+      const res = await fetch(`/api/summary?periodo=${periodo}`);
       const data = await res.json();
 
-      if (!res.ok) {
-        console.error(data.error);
-        return;
-      }
-
-      setSaldo(data.saldo);
-      setGanhos(data.totalGanhos);
-      setGastos(data.totalGastos);
-      setGastosPorCategoria(data.gastosPorCategoria);
-      setGanhosPorCategoria(data.ganhosPorCategoria);
-      setRecentTransactions(data.recentTransactions);
-      setHistorico(data.historico);
-      setSaldoAnterior(
-        data.historico.mensal.length > 1
-          ? data.historico.mensal[data.historico.mensal.length - 2].ganhos -
-              data.historico.mensal[data.historico.mensal.length - 2].gastos
-          : 0
+      setName(data.username);
+      setSaldo(data.saldo || 0);
+      setGanhos(data.totalGanhos || 0);
+      setGastos(data.totalGastos || 0);
+      setSaldoAnterior(data.saldoAnterior || 0);
+      setCategorias(data.categorias || []);
+      setCategoriasGanhos(data.categoriasGanhos || []);
+      const transacoesConvertidas = (data.recentTransactions || []).map(
+        (item: any) => ({
+          id: item.id,
+          descricao: item.description,
+          valor: item.amount,
+          tipo: item.type,
+          categoria: item.category || "",
+          pago: true, // Placeholder; ajuste se quiser usar status real
+          data: item.date,
+        })
       );
+      setTransacoes(transacoesConvertidas);
+      setSaldosMensais(data.saldosMensais || []);
+      setLoading(false);
+      // Removido setPaginaAtual(1);
     }
 
-    fetchSummary();
-  }, []);
+    carregarDashboard();
+  }, [periodo]);
 
-  const doughnutData = {
-    labels: ["Ganhos", "Gastos"],
+  // Meta Financeira (exemplo: pode vir de API futuramente)
+  const metaFinanceira = 10000;
+  const percentualMeta =
+    metaFinanceira > 0 ? Math.min((saldo / metaFinanceira) * 100, 100) : 0;
+
+  function gerarInsightAutomatico() {
+    if (ganhos > gastos) {
+      return "💡 Você está economizando mais do que gastando. Ótimo trabalho!";
+    }
+    if (gastos > ganhos) {
+      return "⚡ Seus gastos estão superiores aos ganhos. Atenção nas despesas!";
+    }
+    if (ganhos === 0 && gastos === 0) {
+      return "📭 Nenhuma movimentação registrada ainda.";
+    }
+    return "📊 Continue acompanhando suas finanças para melhores resultados.";
+  }
+
+  // Função para gerar insight por categoria
+  function gerarInsightCategoria() {
+    if (categorias.length === 0) {
+      return "💬 Sem dados suficientes para gerar insights por categoria ainda.";
+    }
+
+    const categoriaMaiorGasto = categorias.reduce((prev, current) => {
+      return prev.valor > current.valor ? prev : current;
+    });
+
+    if (categoriaMaiorGasto.nome.toLowerCase().includes("transporte")) {
+      return "🚗 Gastos com Transporte estão impactando seu orçamento. Revise deslocamentos.";
+    }
+    if (categoriaMaiorGasto.nome.toLowerCase().includes("alimentação")) {
+      return "🍔 Gastos com Alimentação cresceram. Pode ser interessante revisar refeições.";
+    }
+    if (categoriaMaiorGasto.nome.toLowerCase().includes("lazer")) {
+      return "🎉 Seu Lazer aumentou bastante! Ótimo, mas cuide do equilíbrio financeiro.";
+    }
+
+    return `📈 Seu maior gasto é em ${categoriaMaiorGasto.nome}. Acompanhe de perto para manter o controle.`;
+  }
+
+  function calcularCrescimentoMensal() {
+    if (saldosMensais.length < 2) return null;
+
+    const saldoAtual = saldosMensais[saldosMensais.length - 1].saldo;
+    const saldoAnterior = saldosMensais[saldosMensais.length - 2].saldo;
+
+    if (saldoAnterior === 0) return null; // evitar divisão por zero
+
+    const crescimento =
+      ((saldoAtual - saldoAnterior) / Math.abs(saldoAnterior)) * 100;
+
+    return crescimento;
+  }
+
+  const dataLine: ChartData<"line", (number | null)[], string> = {
+    labels: saldosMensais.map((item) => item.mes),
     datasets: [
       {
-        data: [ganhos, gastos],
-        backgroundColor: ["#34d399", "#f87171"],
-        borderColor: ["#10b981", "#ef4444"],
-        borderWidth: 2,
+        label: "Saldo",
+        data: saldosMensais.map((item) => item.saldo),
+        borderColor: "#10B981",
+        backgroundColor: chartRef.current
+          ? (() => {
+              const ctx = chartRef.current.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              gradient.addColorStop(0, "rgba(16, 185, 129, 0.4)");
+              gradient.addColorStop(1, "rgba(16, 185, 129, 0)");
+              return gradient;
+            })()
+          : "rgba(16, 185, 129, 0.4)",
+        tension: 0.4,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#10B981",
       },
     ],
   };
 
-  // Função para gerar dados do gráfico de barras conforme o período selecionado
-  function buildBarData() {
-    let labels: string[] = [];
-    let ganhosData: number[] = [];
-    let gastosData: number[] = [];
-
-    if (period === "monthly") {
-      labels = historico.mensal.map((m) => m.mes);
-      ganhosData = historico.mensal.map((m) => m.ganhos);
-      gastosData = historico.mensal.map((m) => m.gastos);
-    } else if (period === "weekly") {
-      labels = historico.semanal.map((s) => s.semana);
-      ganhosData = historico.semanal.map((s) => s.ganhos);
-      gastosData = historico.semanal.map((s) => s.gastos);
-    } else if (period === "daily") {
-      labels = historico.diario.map((d) => d.dia);
-      ganhosData = historico.diario.map((d) => d.ganhos);
-      gastosData = historico.diario.map((d) => d.gastos);
-    }
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Ganhos",
-          data: ganhosData,
-          backgroundColor: "#34d399",
-        },
-        {
-          label: "Gastos",
-          data: gastosData,
-          backgroundColor: "#f87171",
-        },
-      ],
-    };
-  }
-
-  const chartOptions = {
+  const options: ChartOptions<"line"> = {
+    responsive: true,
     plugins: {
-      legend: {
-        labels: {
-          color: "#047857",
-          font: { weight: "bold" as const },
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context: any) =>
+            `Saldo: R$ ${context.parsed.y.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+            })}`,
         },
       },
     },
-    responsive: true,
+    animation: {
+      duration: 1200,
+      easing: "easeOutQuart",
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: (value: any) => `R$ ${value}`,
+        },
+      },
+    },
   };
 
-  // Cálculo da projeção de saldo futuro
-  const crescimentoMedioMensal =
-    historico.mensal.length >= 2
-      ? historico.mensal
-          .map((m) => m.ganhos - m.gastos)
-          .reduce((acc, saldo) => acc + saldo, 0) / historico.mensal.length
-      : 0;
-  const mesesProjecao = 6;
-  const saldoProjetado = saldo + crescimentoMedioMensal * mesesProjecao;
-
-  // Função para gerar alertas automáticos inteligentes
-  function gerarAlertas() {
-    const alertas: string[] = [];
-
-    const totalGastos = Object.values(gastosPorCategoria).reduce(
-      (acc, v) => acc + v,
-      0
-    );
-    const totalGanhos = Object.values(ganhosPorCategoria).reduce(
-      (acc, v) => acc + v,
-      0
-    );
-
-    if (totalGanhos > 0) {
-      const poupancaPercentual = (saldo / totalGanhos) * 100;
-      if (poupancaPercentual >= 30) {
-        alertas.push(
-          "🎯 Ótimo! Você poupou mais de 30% dos seus ganhos este mês."
-        );
-      } else if (poupancaPercentual < 10) {
-        alertas.push(
-          "⚠️ Atenção: Você poupou menos de 10% dos seus ganhos este mês."
-        );
-      }
-    }
-
-    const categoriaMaiorGasto = Object.entries(gastosPorCategoria).sort(
-      (a, b) => b[1] - a[1]
-    )[0];
-    if (categoriaMaiorGasto && totalGastos > 0) {
-      const percentualCategoria = (categoriaMaiorGasto[1] / totalGastos) * 100;
-      if (percentualCategoria >= 50) {
-        alertas.push(
-          `🚨 Mais de 50% dos seus gastos foram com ${categoriaMaiorGasto[0]}.`
-        );
-      }
-    }
-
-    if (totalGastos > totalGanhos) {
-      alertas.push("🚨 Seus gastos superaram seus ganhos este mês.");
-    }
-
-    return alertas;
-  }
-
   return (
-    <main className="flex flex-col min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 text-gray-800 px-6 py-12">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-emerald-600 mb-4 text-center tracking-tight">
-        Flora Finance - Dashboard
-      </h1>
-
-      <p className="text-center text-emerald-700 font-medium mb-12">
-        Visão geral financeira consolidada
-      </p>
-
-      {/* Saldo destacado */}
-      <section className="flex flex-col items-center mb-10">
-        <div className="bg-white rounded-2xl px-8 py-6 shadow-xl border-2 border-emerald-200 mb-4 w-full max-w-lg">
-          <h2 className="text-lg font-semibold mb-2 text-emerald-700 text-center">
-            Saldo Total
-          </h2>
-          <p className="text-4xl font-extrabold text-emerald-500 text-center tracking-tight">
-            R$ {saldo.toLocaleString("pt-BR")}
-          </p>
-          {saldoAnterior !== 0 && (
-            <div className="flex justify-center items-center mt-2">
-              <span
-                className={`text-sm font-medium ${
-                  saldo - saldoAnterior >= 0 ? "text-green-500" : "text-red-500"
-                } flex items-center`}
-              >
-                {saldo - saldoAnterior >= 0 ? "▲" : "▼"}{" "}
-                {saldoAnterior
-                  ? Math.abs(
-                      ((saldo - saldoAnterior) / saldoAnterior) * 100
-                    ).toFixed(1)
-                  : "0"}
-                % {saldo - saldoAnterior >= 0 ? "a mais" : "a menos"} que o mês
-                anterior
-              </span>
-            </div>
-          )}
-        </div>
-        {/* Insights Automáticos */}
-        <section className="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-100 w-full max-w-2xl mt-4">
-          <h3 className="text-lg font-bold text-emerald-600 mb-4 text-center">
-            Insights Financeiros
-          </h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            {saldoAnterior !== 0 && (
-              <li>
-                {saldo - saldoAnterior >= 0 ? (
-                  <>
-                    ✅ Seu saldo aumentou em{" "}
-                    {Math.abs(
-                      ((saldo - saldoAnterior) / saldoAnterior) * 100
-                    ).toFixed(1)}
-                    % em relação ao mês anterior. Ótimo progresso!
-                  </>
-                ) : (
-                  <>
-                    ⚠️ Seu saldo caiu em{" "}
-                    {Math.abs(
-                      ((saldo - saldoAnterior) / saldoAnterior) * 100
-                    ).toFixed(1)}
-                    % em relação ao mês anterior. Atenção aos gastos!
-                  </>
-                )}
-              </li>
-            )}
-            {Object.keys(gastosPorCategoria).length > 0 && (
-              <li>
-                📉 Sua maior despesa foi com{" "}
-                <strong>
-                  {
-                    Object.entries(gastosPorCategoria).sort(
-                      (a, b) => b[1] - a[1]
-                    )[0][0]
-                  }
-                </strong>
-                .
-              </li>
-            )}
-            {Object.keys(ganhosPorCategoria).length > 0 && (
-              <li>
-                📈 Sua principal fonte de renda foi{" "}
-                <strong>
-                  {
-                    Object.entries(ganhosPorCategoria).sort(
-                      (a, b) => b[1] - a[1]
-                    )[0][0]
-                  }
-                </strong>
-                .
-              </li>
-            )}
-          </ul>
-        </section>
-        {/* Projeção Financeira */}
-        <section className="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-100 w-full max-w-2xl mt-8">
-          <h3 className="text-lg font-bold text-emerald-600 mb-4 text-center">
-            Projeção de Saldo Futuro
-          </h3>
-          {crescimentoMedioMensal !== 0 ? (
-            <p className="text-center text-gray-700">
-              Se você mantiver seu padrão atual, em{" "}
-              <strong>{mesesProjecao} meses</strong> seu saldo será
-              aproximadamente{" "}
-              <span
-                className={`font-bold ${
-                  saldoProjetado >= saldo ? "text-green-500" : "text-red-500"
-                }`}
-              >
-                R${" "}
-                {saldoProjetado.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-              .
-            </p>
-          ) : (
-            <p className="text-center text-gray-400">
-              Dados insuficientes para projeção.
-            </p>
-          )}
-        </section>
-
-        {/* Alertas Inteligentes */}
-        <section className="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-100 w-full max-w-2xl mt-8">
-          <h3 className="text-lg font-bold text-emerald-600 mb-4 text-center">
-            Alertas Inteligentes
-          </h3>
-          {gerarAlertas().length > 0 ? (
-            <ul className="space-y-2 text-sm text-gray-700">
-              {gerarAlertas().map((alerta, idx) => (
-                <li key={idx}>🔔 {alerta}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-center text-gray-400">
-              Nenhum alerta para este período.
-            </p>
-          )}
-        </section>
-        {/* Objetivo Financeiro */}
-        <section className="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-100 w-full max-w-2xl mt-8">
-          <h3 className="text-lg font-bold text-emerald-600 mb-4 text-center">
-            Seu Objetivo Financeiro
-          </h3>
-          <div className="text-center text-gray-700">
-            <p className="font-medium">🎯 {objetivoFinanceiro.nome}</p>
-            <p className="mt-2">
-              Meta:{" "}
-              <strong>
-                R$ {objetivoFinanceiro.valorObjetivo.toLocaleString("pt-BR")}
-              </strong>
-            </p>
-            <p>
-              Data limite:{" "}
-              <strong>
-                {objetivoFinanceiro.dataLimite.toLocaleDateString("pt-BR")}
-              </strong>
-            </p>
-            <p className="mt-2">
-              Faltam:{" "}
-              <span
-                className={`font-bold ${
-                  saldo >= objetivoFinanceiro.valorObjetivo
-                    ? "text-green-500"
-                    : "text-red-500"
-                }`}
-              >
-                R${" "}
-                {(objetivoFinanceiro.valorObjetivo - saldo > 0
-                  ? objetivoFinanceiro.valorObjetivo - saldo
-                  : 0
-                ).toLocaleString("pt-BR")}
-              </span>
-            </p>
-            <p className="mt-2">
-              Você precisa acumular cerca de{" "}
-              <strong>
-                R${" "}
-                {Math.ceil(
-                  (objetivoFinanceiro.valorObjetivo - saldo) /
-                    Math.max(
-                      1,
-                      objetivoFinanceiro.dataLimite.getMonth() +
-                        1 -
-                        (new Date().getMonth() + 1)
-                    )
-                ).toLocaleString("pt-BR")}
-              </strong>{" "}
-              por mês.
-            </p>
-          </div>
-        </section>
-      </section>
-
-      {/* Evolução do Saldo Mensal */}
-      <section className="bg-white p-8 rounded-xl shadow-lg border border-emerald-100 mb-12 w-full max-w-4xl mx-auto">
-        <h2 className="text-xl font-bold text-emerald-600 mb-6 text-center">
-          Evolução do Saldo Mensal
-        </h2>
-        <Line
-          data={{
-            labels: historico.mensal.map((m) => m.mes),
-            datasets: [
-              {
-                label: "Saldo",
-                data: historico.mensal.map((m) => m.ganhos - m.gastos),
-                fill: true,
-                backgroundColor: "rgba(16,185,129,0.1)",
-                borderColor: "#10b981",
-                tension: 0.4,
-                pointBackgroundColor: "#10b981",
-                pointBorderColor: "#10b981",
-              },
-            ],
-          }}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: {
-                labels: {
-                  color: "#047857",
-                  font: { weight: "bold" as const },
-                },
-              },
-            },
-            scales: {
-              x: {
-                ticks: { color: "#6b7280" },
-                grid: { display: false },
-              },
-              y: {
-                ticks: { color: "#6b7280" },
-                grid: { color: "#e5e7eb" },
-              },
-            },
-          }}
-        />
-      </section>
-
-      {/* Cards de Ganhos/Gastos */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 w-full max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-emerald-100 text-center transition-transform hover:scale-105">
-          <h2 className="text-lg font-semibold mb-2 text-green-600">Ganhos</h2>
-          <p className="text-3xl font-bold text-green-500">
-            +R$ {ganhos.toLocaleString("pt-BR")}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-emerald-100 text-center transition-transform hover:scale-105">
-          <h2 className="text-lg font-semibold mb-2 text-red-500">Gastos</h2>
-          <p className="text-3xl font-bold text-red-400">
-            -R$ {gastos.toLocaleString("pt-BR")}
-          </p>
-        </div>
-      </section>
-
-      {/* Ganhos vs Gastos e Distribuição de Gastos por Categoria - Premium Clean Section */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        {/* Gráfico de Ganhos vs Gastos */}
-        <CardDashboard title="Ganhos vs Gastos">
-          <Doughnut
-            data={{
-              labels: ["Ganhos", "Gastos"],
-              datasets: [
-                {
-                  data: [ganhos, gastos],
-                  backgroundColor: ["#34d399", "#f87171"],
-                  borderColor: ["#10b981", "#ef4444"],
-                  borderWidth: 2,
-                },
-              ],
-            }}
-            options={chartOptions}
-          />
-        </CardDashboard>
-
-        {/* Gráfico de Categorias de Gastos */}
-        <CardDashboard title="Distribuição de Gastos por Categoria">
-          {Object.keys(gastosPorCategoria).length > 0 ? (
-            <Doughnut
-              data={{
-                labels: Object.keys(gastosPorCategoria),
-                datasets: [
-                  {
-                    data: Object.values(gastosPorCategoria),
-                    backgroundColor: [
-                      "#60a5fa",
-                      "#fb923c",
-                      "#34d399",
-                      "#f472b6",
-                      "#facc15",
-                      "#38bdf8",
-                    ],
-                    borderWidth: 2,
-                  },
-                ],
-              }}
-              options={chartOptions}
-            />
-          ) : (
-            <p className="text-center text-gray-400">Sem dados de gastos</p>
-          )}
-        </CardDashboard>
-      </section>
-
-      {/* Resumo Geral de Ganhos vs Gastos */}
-      <section className="bg-white p-8 rounded-xl shadow-lg border border-emerald-100 mb-12 w-full max-w-2xl mx-auto">
-        <h2 className="text-xl font-bold text-emerald-600 mb-6 text-center">
-          Resumo Geral de Ganhos vs Gastos
-        </h2>
-        <Doughnut data={doughnutData} options={chartOptions} />
-        <div className="flex justify-center mt-6 space-x-8">
-          <div className="flex items-center space-x-2">
-            <span
-              className="inline-block w-4 h-4 rounded-full"
-              style={{ background: "#34d399" }}
-            />
-            <span className="text-green-700 font-medium">Ganhos</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span
-              className="inline-block w-4 h-4 rounded-full"
-              style={{ background: "#f87171" }}
-            />
-            <span className="text-red-500 font-medium">Gastos</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Distribuição de Ganhos e Gastos por Categoria */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        {/* Gráfico de Ganhos */}
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-emerald-100">
-          <h2 className="text-xl font-bold text-emerald-600 mb-6 text-center">
-            Distribuição de Ganhos por Categoria
-          </h2>
-          {Object.keys(ganhosPorCategoria).length > 0 ? (
-            <Doughnut
-              data={{
-                labels: Object.keys(ganhosPorCategoria),
-                datasets: [
-                  {
-                    data: Object.values(ganhosPorCategoria),
-                    backgroundColor: [
-                      "#60a5fa",
-                      "#fb923c",
-                      "#34d399",
-                      "#f472b6",
-                      "#facc15",
-                      "#38bdf8",
-                    ],
-                    borderWidth: 2,
-                  },
-                ],
-              }}
-              options={chartOptions}
-            />
-          ) : (
-            <p className="text-gray-400 text-center">Sem dados de ganhos</p>
-          )}
-        </div>
-
-        {/* Gráfico de Gastos */}
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-emerald-100">
-          <h2 className="text-xl font-bold text-emerald-600 mb-6 text-center">
-            Distribuição de Gastos por Categoria
-          </h2>
-          {Object.keys(gastosPorCategoria).length > 0 ? (
-            <Doughnut
-              data={{
-                labels: Object.keys(gastosPorCategoria),
-                datasets: [
-                  {
-                    data: Object.values(gastosPorCategoria),
-                    backgroundColor: [
-                      "#60a5fa",
-                      "#fb923c",
-                      "#34d399",
-                      "#f472b6",
-                      "#facc15",
-                      "#38bdf8",
-                    ],
-                    borderWidth: 2,
-                  },
-                ],
-              }}
-              options={chartOptions}
-            />
-          ) : (
-            <p className="text-gray-400 text-center">Sem dados de gastos</p>
-          )}
-        </div>
-      </section>
-
-      {/* Gráfico de Barras */}
-      <section className="bg-white p-8 rounded-xl shadow-lg border border-emerald-100 mb-12">
-        {/* Botões para trocar o período */}
-        <div className="flex justify-center mb-6 space-x-4">
-          <button
-            onClick={() => setPeriod("daily")}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              period === "daily"
-                ? "bg-emerald-500 text-white"
-                : "bg-white border border-emerald-300 text-emerald-600"
-            }`}
-          >
-            Diário
-          </button>
-          <button
-            onClick={() => setPeriod("weekly")}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              period === "weekly"
-                ? "bg-emerald-500 text-white"
-                : "bg-white border border-emerald-300 text-emerald-600"
-            }`}
-          >
-            Semanal
-          </button>
-          <button
-            onClick={() => setPeriod("monthly")}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              period === "monthly"
-                ? "bg-emerald-500 text-white"
-                : "bg-white border border-emerald-300 text-emerald-600"
-            }`}
-          >
-            Mensal
-          </button>
-        </div>
-        {/* Título do gráfico com período */}
-        <h2 className="text-xl font-bold text-emerald-600 mb-6 text-center">
-          Resumo{" "}
-          {period === "daily"
-            ? "Diário"
-            : period === "weekly"
-            ? "Semanal"
-            : "Mensal"}
-        </h2>
-        <Bar
-          data={buildBarData()}
-          options={{
-            ...chartOptions,
-            plugins: {
-              ...chartOptions.plugins,
-              legend: {
-                ...chartOptions.plugins.legend,
-                labels: {
-                  ...chartOptions.plugins.legend.labels,
-                  color: "#374151",
-                },
-              },
-              title: {
-                display: false,
-              },
-            },
-            scales: {
-              x: {
-                title: {
-                  display: true,
-                  text:
-                    period === "monthly"
-                      ? "Mês"
-                      : period === "weekly"
-                      ? "Semana"
-                      : "Dia",
-                  color: "#047857",
-                  font: { weight: "bold" },
-                },
-                ticks: { color: "#6b7280" },
-                grid: { display: false },
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: "Valor (R$)",
-                  color: "#047857",
-                  font: { weight: "bold" },
-                },
-                ticks: { color: "#6b7280" },
-                grid: { color: "#e5e7eb" },
-              },
-            },
-          }}
-        />
-      </section>
-
-      {/* Transações Recentes */}
-      <section className="bg-white rounded-xl p-8 shadow-lg border border-emerald-100 mb-12 w-full max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-emerald-600 mb-6">
-          Últimas Transações
-        </h2>
-        <ul>
-          {recentTransactions.map((t, idx) => (
-            <li
-              key={t.id}
-              className={`flex justify-between text-sm ${
-                idx < recentTransactions.length - 1
-                  ? "border-b border-emerald-100 pb-2 mb-2"
-                  : ""
+    <main className="flex flex-col gap-10 p-6 md:p-10">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-emerald-600">
+          Visão Geral - {name}
+        </h1>
+        <div className="flex gap-2 bg-emerald-100 p-2 rounded-full">
+          {["hoje", "semana", "mes"].map((item) => (
+            <button
+              key={item}
+              onClick={() => setPeriodo(item as "hoje" | "semana" | "mes")}
+              className={`px-4 py-2 rounded-full text-sm transition-all duration-300 ${
+                periodo === item
+                  ? "bg-emerald-500 text-white shadow-md"
+                  : "bg-transparent text-emerald-600 hover:bg-emerald-200"
               }`}
             >
-              <span>{t.description}</span>
-              <span
-                className={
-                  t.type === "GANHO" ? "text-green-500" : "text-red-400"
-                }
-              >
-                {t.type === "GANHO" ? "+" : "-"}R${" "}
-                {Math.abs(t.amount).toLocaleString("pt-BR")}
-              </span>
-            </li>
+              {item === "hoje" ? "Hoje" : item === "semana" ? "Semana" : "Mês"}
+            </button>
           ))}
-        </ul>
+        </div>
+      </div>
+
+      {/* Insights Automáticos */}
+      {!loading && (
+        <div className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+          <div className="text-emerald-600 font-semibold text-lg">
+            {gerarInsightAutomatico()}
+          </div>
+        </div>
+      )}
+
+      {/* Insights por Categoria */}
+      {!loading && (
+        <div className="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+          <div className="text-emerald-600 font-semibold text-lg">
+            {gerarInsightCategoria()}
+          </div>
+        </div>
+      )}
+
+      {/* Cards */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading ? (
+          Array(4)
+            .fill(0)
+            .map((_, index) => (
+              <div
+                key={index}
+                className="h-24 bg-gradient-to-r from-emerald-100 via-emerald-200 to-emerald-100 animate-[pulse_1.5s_ease-in-out_infinite] rounded-lg"
+              />
+            ))
+        ) : (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <CardDashboard
+                title="Saldo Atual"
+                value={
+                  <span className="text-emerald-700 font-bold">
+                    R${" "}
+                    {saldo.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                }
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <CardDashboard
+                title="Ganhos"
+                value={
+                  <span className="text-emerald-700 font-bold">
+                    R${" "}
+                    {ganhos.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                }
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <CardDashboard
+                title="Gastos"
+                value={
+                  <span className="text-emerald-700 font-bold">
+                    R${" "}
+                    {gastos.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                }
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <CardDashboard
+                title="Projeção de Saldo"
+                value={
+                  <span className="text-emerald-700 font-bold">
+                    R${" "}
+                    {saldoProjetado.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                }
+              />
+            </motion.div>
+          </>
+        )}
       </section>
 
-      {/* Botão */}
-      <div className="flex justify-center">
-        <button className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-600 hover:scale-105 hover:brightness-110 transition-transform text-white font-bold py-3 px-8 rounded-full shadow-md">
-          Gerar Resumo Manual
-        </button>
-      </div>
+      {/* Gráficos */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardDashboard title="Distribuição de Gastos">
+          {loading ? (
+            <div className="h-64 bg-gradient-to-r from-emerald-100 via-emerald-200 to-emerald-100 animate-[pulse_1.5s_ease-in-out_infinite] rounded-lg" />
+          ) : categorias.length > 0 ? (
+            <DoughnutChart categorias={categorias} />
+          ) : (
+            <p className="text-center text-gray-400">Sem dados para mostrar</p>
+          )}
+        </CardDashboard>
+
+        <CardDashboard title="Distribuição de Ganhos">
+          {loading ? (
+            <div className="h-64 bg-gradient-to-r from-emerald-100 via-emerald-200 to-emerald-100 animate-[pulse_1.5s_ease-in-out_infinite] rounded-lg" />
+          ) : categoriasGanhos.length > 0 ? (
+            <DoughnutChart categorias={categoriasGanhos} />
+          ) : (
+            <p className="text-center text-gray-400">Sem dados para mostrar</p>
+          )}
+        </CardDashboard>
+      </section>
+
+      {/* Meta Financeira */}
+      {!loading && (
+        <section className="bg-white rounded-xl p-6 shadow-md flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <h2 className="text-xl font-bold text-emerald-600">
+              Meta Financeira
+            </h2>
+            <span className="text-sm font-semibold text-emerald-700">
+              {percentualMeta.toFixed(1)}% atingido
+            </span>
+          </div>
+          <div className="w-full bg-emerald-100 rounded-full h-5 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-5 rounded-full transition-all duration-700"
+              style={{ width: `${percentualMeta}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Saldo Atual: R$ {saldo.toLocaleString("pt-BR")}</span>
+            <span>Meta: R$ {metaFinanceira.toLocaleString("pt-BR")}</span>
+          </div>
+        </section>
+      )}
+
+      {/* Últimas Transações */}
+      <section className="bg-white rounded-xl p-6 shadow-md">
+        <h2 className="text-xl font-bold text-emerald-600 mb-4">
+          Últimas Transações
+        </h2>
+        {loading ? (
+          <div className="h-32 bg-gradient-to-r from-emerald-100 via-emerald-200 to-emerald-100 animate-[pulse_1.5s_ease-in-out_infinite] rounded-lg" />
+        ) : (
+          <>
+            <TransactionTable transacoes={transacoes} />
+          </>
+        )}
+      </section>
+
+      {/* Evolução mês a mês */}
+      <section className="bg-white rounded-xl p-6 shadow-md">
+        <h2 className="text-xl font-bold text-emerald-600 mb-4">
+          Evolução do Saldo
+        </h2>
+        {loading ? (
+          <div className="h-64 bg-gradient-to-r from-emerald-100 via-emerald-200 to-emerald-100 animate-[pulse_1.5s_ease-in-out_infinite] rounded-lg" />
+        ) : saldosMensais.length > 0 ? (
+          <>
+            {calcularCrescimentoMensal() !== null && (
+              <div className="flex items-center gap-2 mb-4">
+                {calcularCrescimentoMensal()! > 0 ? (
+                  <span className="text-green-600 font-semibold">
+                    📈 Crescimento de {calcularCrescimentoMensal()?.toFixed(1)}%
+                    no último mês
+                  </span>
+                ) : (
+                  <span className="text-red-600 font-semibold">
+                    📉 Queda de{" "}
+                    {Math.abs(calcularCrescimentoMensal()!).toFixed(1)}% no
+                    último mês
+                  </span>
+                )}
+              </div>
+            )}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <Line ref={chartRef} data={dataLine} options={options} />
+            </motion.div>
+          </>
+        ) : (
+          <p className="text-center text-gray-400">
+            Sem dados de evolução disponíveis.
+          </p>
+        )}
+      </section>
     </main>
   );
 }

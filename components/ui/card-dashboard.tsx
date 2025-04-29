@@ -5,7 +5,7 @@ import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface CardDashboardProps {
   title: string;
-  value?: string;
+  value?: ReactNode;
   children?: ReactNode;
   positive?: boolean;
 }

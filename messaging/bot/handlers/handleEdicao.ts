@@ -11,68 +11,47 @@ export async function handleEdicao(
   try {
     const textoLower = text.toLowerCase();
 
-    // Melhorando a detecção de "gasto" e "ganho" com expressões regulares mais flexíveis
     const isGasto = /gasto|despesa|compra|mercado|alimentação/.test(textoLower);
-    const isGanho = /ganho|receita|salário|venda|pagamento/.test(textoLower);
+    const isGanho = /ganho|receita|salário|venda|pagamento|aposta/.test(
+      textoLower
+    );
 
     if (!isGasto && !isGanho) {
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-        text: "❌ Não entendi se você quer editar um gasto ou um ganho. Por favor, especifique! 📄",
+        text: "❌ Não entendi se você quer editar um gasto ou um ganho. Por favor, diga 'editar ganho de 500 para 600'.",
       });
       return;
     }
 
-    // Extrair o novo valor
-    const valorRegex = /(\d{1,5}(?:[.,]\d{1,2})?)/;
-    const valorEncontrado = textoLower.match(valorRegex);
+    const valorAntigoRegex = /de(?:[^0-9]*)?(\d{1,6}(?:[.,]\d{1,2})?)/;
+    const valorNovoRegex = /para(?:[^0-9]*)?(\d{1,6}(?:[.,]\d{1,2})?)/;
 
-    if (!valorEncontrado) {
+    const antigoMatch = textoLower.match(valorAntigoRegex);
+    const novoMatch = textoLower.match(valorNovoRegex);
+
+    if (!antigoMatch || !novoMatch) {
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-        text: "❌ Não encontrei o valor para atualizar. Pode tentar novamente informando o valor? 💵",
+        text: "❌ Não encontrei os valores 'de' e 'para' corretamente. Exemplo: 'editar ganho de 500 para 700'.",
       });
       return;
     }
 
-    const novoValor = parseFloat(valorEncontrado[0].replace(",", "."));
+    const valorAntigo = parseFloat(antigoMatch[1].replace(",", "."));
+    const novoValor = parseFloat(novoMatch[1].replace(",", "."));
 
-    // Extrair categoria (pegamos a palavra depois de 'gasto' ou 'ganho')
-    const categoriaRegex = isGasto ? /gasto (.*?) para/ : /ganho (.*?) para/;
-
-    const categoriaEncontrada = textoLower.match(categoriaRegex);
-
-    const categoria = categoriaEncontrada
-      ? categoriaEncontrada[1].trim()
-      : "outros";
-
-    const sinonimosCategoria: { [key: string]: string } = {
-      mercado: "alimentação",
-      shop: "alimentação",
-      compras: "alimentação",
-      academia: "saúde",
-      netflix: "assinaturas",
-      streaming: "assinaturas",
-      roupa: "vestuário",
-      roupas: "vestuário",
-      aluguel: "dívidas",
-    };
-
-    // Normalizar a categoria caso exista sinônimo
-    const categoriaNormalizada =
-      sinonimosCategoria[categoria.toLowerCase()] || categoria;
-
-    if (!categoria) {
+    if (isNaN(valorAntigo) || isNaN(novoValor)) {
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-        text: "❌ Não consegui identificar a categoria que você quer editar. Pode tentar novamente? 📚",
+        text: "❌ Não entendi os valores que você quer alterar. Tente enviar como 'editar ganho de 500 para 700'.",
       });
       return;
     }
 
-    // Buscar a transação mais recente para aquela categoria
+    // Buscar a transação mais recente que bate com o valor antigo
     const transacao = await prisma.transaction.findFirst({
       where: {
         userId: user.id,
         type: isGasto ? "GASTO" : "GANHO",
-        category: { contains: categoriaNormalizada, mode: "insensitive" },
+        amount: valorAntigo,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -81,7 +60,7 @@ export async function handleEdicao(
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: `❌ Não encontrei um ${
           isGasto ? "gasto" : "ganho"
-        } recente na categoria "${categoriaNormalizada}".`,
+        } com o valor de R$${valorAntigo.toFixed(2)}.`,
       });
       return;
     }
@@ -93,13 +72,15 @@ export async function handleEdicao(
     });
 
     await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-      text: `✅ ${isGasto ? "Gasto" : "Ganho"} na categoria *${capitalize(
-        categoriaNormalizada
-      )}* atualizado para *R$${novoValor.toFixed(2)}*! 🎯`,
+      text: `✅ ${
+        isGasto ? "Gasto" : "Ganho"
+      } atualizado de *R$${valorAntigo.toFixed(2)}* para *R$${novoValor.toFixed(
+        2
+      )}*! 🎯`,
     });
 
     logInfo(
-      `✏️ [Transação editada] Usuário: ${phone} | Categoria: ${categoriaNormalizada} | Novo Valor: ${novoValor}`
+      `✏️ [Transação editada] Usuário: ${phone} | De: R$${valorAntigo} -> Para: R$${novoValor}`
     );
   } catch (error) {
     logError(`❌ Erro ao editar transação: ${error}`);
@@ -109,6 +90,6 @@ export async function handleEdicao(
   }
 }
 
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
+// function capitalize(text: string): string {
+//   return text.charAt(0).toUpperCase() + text.slice(1);
+// }

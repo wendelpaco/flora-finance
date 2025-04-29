@@ -1,3 +1,5 @@
+import { formatarValorParaBRL } from "../utils/ajustar-valor-texto";
+
 export interface FormatTransactionMessageProps {
   descricao: string;
   valor: number;
@@ -19,19 +21,22 @@ export function formatTransactionMessage({
   pago,
   saldoAtual,
 }: FormatTransactionMessageProps) {
+  const value = formatarValorParaBRL(valor);
+  const saldo = formatarValorParaBRL(saldoAtual);
+
   return `
 🌿 Flora Finance
 ✅ Transação Registrada com Sucesso!
 
 📝 Descrição: ${descricao}
-💵 Valor: R$ ${valor.toLocaleString("pt-BR")}
+💵 Valor: ${value}
 🏷️ Categoria: ${categoria}
 📊 Tipo: ${tipo === "GANHO" ? "Receita" : "Despesa"}
 🏦 Conta: ${conta}
 📅 Data: ${new Date(data).toLocaleDateString("pt-BR")}
 💳 Pago: ${pago ? "✅" : "❌"}
 
-💰 *Saldo Atual*: R$ ${saldoAtual.toLocaleString("pt-BR")}`;
+💰 *Saldo Atual*: ${saldo}`;
   //-------------------------------------------------//
   //   BUGFIX- Gerar dicas para usuários PRO
   //-------------------------------------------------//

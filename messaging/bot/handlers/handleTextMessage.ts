@@ -3,9 +3,9 @@ import { User } from "@prisma/client";
 import { financeiroFilter } from "../filters/financeiro-filter";
 import { logInfo } from "../utils/logger";
 import { handleCommand } from "./command/command-router";
-import { handleEdicao } from "./handleEdicao";
-import { handleExclusao } from "./handleExclusao";
 import { handleResumo } from "./handleResumo";
+import { handleExclusaoAI } from "./handleExclusaoAI";
+import { handleEdicaoAI } from "./handleEdicaoAI";
 
 export async function handleTextMessage(
   sock: WASocket,
@@ -21,10 +21,10 @@ export async function handleTextMessage(
     await handleResumo(sock, phone, user, text);
   } else if (text.toLowerCase().startsWith("excluir")) {
     logInfo(`🗑️ [Exclusão solicitada] por ${phone}`);
-    await handleExclusao(sock, phone, user, text, user?.plan);
+    await handleExclusaoAI(sock, phone, user, text, user?.plan);
   } else if (text.toLowerCase().startsWith("editar")) {
     logInfo(`✏️ [Edição solicitada] por ${phone}`);
-    await handleEdicao(sock, phone, user, text);
+    await handleEdicaoAI(sock, phone, user, text, user?.plan);
   } else {
     logInfo(`📝 [Registro financeiro] por ${phone}: ${text}`);
     await financeiroFilter({

@@ -2,12 +2,13 @@ import fs from "fs";
 import { baixarAudioMensagem } from "../utils/baixar-audio";
 import { transcreverAudioWhisper } from "../utils/transcrever-audio";
 import { handleResumo } from "./handleResumo";
-import { handleExclusao } from "./handleExclusao";
-import { handleEdicao } from "./handleEdicao";
 import { financeiroFilter } from "../filters/financeiro-filter";
 import { logError, logInfo } from "../utils/logger";
 import { WASocket, proto } from "@whiskeysockets/baileys";
 import { User } from "@prisma/client";
+import { ajustarValorTexto } from "../utils/ajustar-valor-texto";
+import { handleEdicaoAI } from "./handleEdicaoAI";
+import { handleExclusaoAI } from "./handleExclusaoAI";
 
 export async function handleAudioMessage(
   sock: WASocket,
@@ -20,8 +21,9 @@ export async function handleAudioMessage(
   try {
     filePath = await baixarAudioMensagem(msg, phone);
     const textoTranscrito = await transcreverAudioWhisper(filePath);
+    const textoCorrigido = ajustarValorTexto(textoTranscrito);
 
-    if (!textoTranscrito || textoTranscrito.trim().length < 5) {
+    if (!textoCorrigido || textoCorrigido.trim().length < 5) {
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
         text: "❌ Não consegui entender sua mensagem de voz. Pode tentar enviar novamente? 🎤",
       });
@@ -29,22 +31,22 @@ export async function handleAudioMessage(
     }
 
     logInfo(
-      `✍️ [TEXTO TRANSCRITO] - DE: ${user.phone} | MENSAGEM: ${textoTranscrito}`
+      `✍️ [TEXTO TRANSCRITO] - DE: ${user.phone} | MENSAGEM: ${textoCorrigido}`
     );
     //-------------------------------------------------//
     //   BUGFIX- Melhorar captura do comando resumo
     //-------------------------------------------------//
-    if (textoTranscrito.toLowerCase().startsWith("resumo")) {
-      await handleResumo(sock, phone, user, textoTranscrito);
-    } else if (textoTranscrito.toLowerCase().startsWith("excluir")) {
-      await handleExclusao(sock, phone, user, textoTranscrito, user?.plan);
-    } else if (textoTranscrito.toLowerCase().startsWith("editar")) {
-      await handleEdicao(sock, phone, user, textoTranscrito);
+    if (textoCorrigido.toLowerCase().startsWith("resumo")) {
+      await handleResumo(sock, phone, user, textoCorrigido);
+    } else if (textoCorrigido.toLowerCase().startsWith("excluir")) {
+      await handleExclusaoAI(sock, phone, user, textoCorrigido, user?.plan);
+    } else if (textoCorrigido.toLowerCase().startsWith("editar")) {
+      await handleEdicaoAI(sock, phone, user, textoCorrigido, user?.plan);
     } else {
       await financeiroFilter({
         sock,
         phone,
-        text: textoTranscrito,
+        text: textoCorrigido,
         plano: user.plan,
       });
     }

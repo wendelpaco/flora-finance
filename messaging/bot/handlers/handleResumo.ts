@@ -105,7 +105,7 @@ export async function handleResumo(
   const ganhosPorCategoria = transacoes
     .filter((transacao) => transacao.type === "GANHO")
     .reduce((acc, transacao) => {
-      const categoria = transacao.category || "outros";
+      const categoria = transacao.category || "outros" || "outros-ganhos";
       if (!acc[categoria]) {
         acc[categoria] = 0;
       }
