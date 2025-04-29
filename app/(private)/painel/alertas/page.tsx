@@ -63,7 +63,7 @@ export default function AlertasPage() {
       <UserHeader className="absolute top-6 right-6 z-50" />
       <div className="flex flex-col gap-6 p-6 md:p-10">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-          <HiOutlineBell className="w-6 h-6" />
+          <HiOutlineBell className="w-6 h-6 text-emerald-600" />
           Meus Alertas
         </h1>
         <p className="text-muted-foreground text-sm">

@@ -53,19 +53,20 @@ export default function MetasPage() {
       <UserHeader className="absolute top-6 right-6 z-50" />
       <div className="flex flex-col gap-6 p-6 md:p-10">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-          <HiOutlineFlag className="w-6 h-6" /> Minhas Metas
+          <HiOutlineFlag className="w-6 h-6 text-emerald-600" /> Minhas Metas
         </h1>
         <p className="text-muted-foreground text-sm">
           Defina e acompanhe metas financeiras personalizadas.
         </p>
-
-        <Button
-          className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => setModalAberto(true)}
-        >
-          <HiOutlinePlusCircle className="w-4 h-4 mr-2" />
-          Nova Meta
-        </Button>
+        {metas.length > 0 && (
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700"
+            onClick={() => setModalAberto(true)}
+          >
+            <HiOutlinePlusCircle className="w-4 h-4 mr-2" />
+            Nova Meta
+          </Button>
+        )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {metas.length === 0 && (

@@ -36,7 +36,7 @@ export function Toaster() {
           </Toast>
         );
       })}
-      <ToastViewport className="!fixed !top-4 !right-4 !z-[99999] !outline-none" />
+      <ToastViewport className="!fixed !top-4 !right-4 !z-[99999] !outline-none pointer-events-none" />
     </ToastProvider>
   );
 }

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     // }
 
     const user = await prisma.user.findUnique({
-      where: { phone: "5521982800594" },
+      where: { phone: "5521968577262" },
       include: { transactions: true },
     });
 

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   HiOutlineTag,
-  HiOutlineFolder,
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlinePlusCircle,
@@ -22,13 +21,16 @@ import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/UserHeader";
 
 export default function CategoriasPage() {
-  const [novaCategoria, setNovaCategoria] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState({
+    nome: "",
+    cor: "#10B981",
+  });
   const [categorias, setCategorias] = useState([
-    "Alimentação",
-    "Transporte",
-    "Investimentos",
-    "Educação",
-    "Lazer",
+    { nome: "Alimentação", cor: "#10B981" },
+    { nome: "Transporte", cor: "#3B82F6" },
+    { nome: "Investimentos", cor: "#F59E0B" },
+    { nome: "Educação", cor: "#EF4444" },
+    { nome: "Lazer", cor: "#8B5CF6" },
   ]);
   const [categoriaEditando, setCategoriaEditando] = useState<number | null>(
     null
@@ -41,129 +43,104 @@ export default function CategoriasPage() {
       <UserHeader className="absolute top-6 right-6 z-50" />
       <div className="flex flex-col gap-6 p-6 md:p-10">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-          <HiOutlineTag className="w-6 h-6" /> Minhas Categorias
+          <HiOutlineTag className="w-6 h-6 text-emerald-600" />
+          Minhas Categorias
         </h1>
         <p className="text-muted-foreground text-sm">
           Organize e personalize suas categorias de gastos e receitas.
         </p>
 
-        <Card className="shadow-md border border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle>Nova Categoria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (novaCategoria.trim() === "") return;
+        {categorias.length > 0 && (
+          <Button
+            className=" bg-emerald-600 hover:bg-emerald-700"
+            onClick={() => {
+              setNovaCategoria({ nome: "", cor: "#10B981" });
+              setCategoriaEditando(null);
+              setModalAberto(true);
+            }}
+          >
+            <HiOutlinePlusCircle className="w-5 h-5" />
+            Nova Categoria
+          </Button>
+        )}
 
-                if (categorias.includes(novaCategoria)) {
-                  toast({
-                    title: "Ops!",
-                    description: "Essa categoria já existe.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-
-                setCategorias((prev) => [...prev, novaCategoria]);
-                toast({
-                  title: "Sucesso",
-                  description: "Categoria adicionada com sucesso!",
-                });
-                setNovaCategoria("");
-              }}
-              className="flex flex-col md:flex-row gap-4"
-            >
-              <Input
-                placeholder="Ex: Alimentação, Transporte, Investimentos"
-                value={novaCategoria}
-                onChange={(e) => setNovaCategoria(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
-                  <HiOutlinePlusCircle className="w-4 h-4" />
-                  <span>Adicionar</span>
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Lista mockada de categorias */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categorias.map((categoria, index) => (
-            <Card
+            <div
               key={index}
-              className="flex flex-col justify-between border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.01] group"
+              className="rounded-xl border border-gray-200 dark:border-gray-700"
+              style={{ borderLeft: `6px solid ${categoria.cor}` }}
             >
-              <CardHeader className="px-4 pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-800 dark:text-white">
-                  <HiOutlineFolder className="w-5 h-5" /> {categoria}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-between items-center px-4 pb-2">
-                <span className="text-xs text-muted-foreground">
-                  ID: {index + 1}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs px-3 hover:bg-emerald-100 dark:hover:bg-emerald-900 flex items-center gap-1"
-                    onClick={() => {
-                      setNovaCategoria(categoria);
-                      setCategoriaEditando(index);
-                      setModalAberto(true);
-                    }}
-                  >
-                    <HiOutlinePencil className="w-4 h-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs px-3 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 flex items-center gap-1"
-                    onClick={() => {
-                      const confirmar = confirm(
-                        "Tem certeza que deseja excluir esta categoria?"
-                      );
-                      if (confirmar) {
-                        const categoriaRemovida = categorias[index];
-                        const atualizadas = categorias.filter(
-                          (_, i) => i !== index
+              <Card className="shadow-sm border-none">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-800 dark:text-white">
+                    <span
+                      className="h-4 w-1 rounded-full"
+                      style={{ backgroundColor: categoria.cor }}
+                    />
+                    {categoria.nome}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">
+                    ID: {index + 1}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs px-3 hover:bg-emerald-100 dark:hover:bg-emerald-900 flex items-center gap-1"
+                      onClick={() => {
+                        setNovaCategoria(categoria);
+                        setCategoriaEditando(index);
+                        setModalAberto(true);
+                      }}
+                    >
+                      <HiOutlinePencil className="w-4 h-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs px-3 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 flex items-center gap-1"
+                      onClick={() => {
+                        const confirmar = confirm(
+                          "Tem certeza que deseja excluir esta categoria?"
                         );
-                        setCategorias(atualizadas);
-                        toast({
-                          title: "Categoria removida",
-                          description: "Você pode desfazer essa ação.",
-                          action: (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setCategorias((prev) => {
-                                  const novas = [...prev];
-                                  novas.splice(index, 0, categoriaRemovida);
-                                  return novas;
-                                });
-                              }}
-                            >
-                              Desfazer
-                            </Button>
-                          ),
-                        });
-                      }
-                    }}
-                  >
-                    <HiOutlineTrash className="w-4 h-4" />
-                    Excluir
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                        if (confirmar) {
+                          const categoriaRemovida = categorias[index];
+                          const atualizadas = categorias.filter(
+                            (_, i) => i !== index
+                          );
+                          setCategorias(atualizadas);
+                          toast({
+                            title: "Categoria removida",
+                            description: "Você pode desfazer essa ação.",
+                            action: (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setCategorias((prev) => {
+                                    const novas = [...prev];
+                                    novas.splice(index, 0, categoriaRemovida);
+                                    return novas;
+                                  });
+                                }}
+                              >
+                                Desfazer
+                              </Button>
+                            ),
+                          });
+                        }
+                      }}
+                    >
+                      <HiOutlineTrash className="w-4 h-4" />
+                      Excluir
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
       </div>
@@ -171,32 +148,101 @@ export default function CategoriasPage() {
       <Dialog open={modalAberto} onOpenChange={setModalAberto}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Categoria</DialogTitle>
+            <DialogTitle>
+              {categoriaEditando !== null
+                ? "Editar Categoria"
+                : "Nova Categoria"}
+            </DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (novaCategoria.trim() === "") return;
+              if (novaCategoria.nome.trim() === "") return;
 
-              setCategorias((prev) =>
-                prev.map((cat, i) =>
-                  i === categoriaEditando ? novaCategoria : cat
-                )
-              );
-              toast({
-                title: "Atualizada",
-                description: "Categoria atualizada com sucesso!",
-              });
+              if (categoriaEditando === null) {
+                if (categorias.some((cat) => cat.nome === novaCategoria.nome)) {
+                  toast({
+                    title: "Ops!",
+                    description: "Essa categoria já existe.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setCategorias((prev) => [...prev, novaCategoria]);
+                toast({
+                  title: "Sucesso",
+                  description: "Categoria adicionada com sucesso!",
+                });
+              } else {
+                if (
+                  categorias.some(
+                    (cat, i) =>
+                      cat.nome === novaCategoria.nome && i !== categoriaEditando
+                  )
+                ) {
+                  toast({
+                    title: "Ops!",
+                    description: "Essa categoria já existe.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setCategorias((prev) =>
+                  prev.map((cat, i) =>
+                    i === categoriaEditando ? novaCategoria : cat
+                  )
+                );
+                toast({
+                  title: "Atualizada",
+                  description: "Categoria atualizada com sucesso!",
+                });
+              }
               setCategoriaEditando(null);
-              setNovaCategoria("");
+              setNovaCategoria({ nome: "", cor: "#10B981" });
               setModalAberto(false);
             }}
             className="space-y-4"
           >
             <Input
-              placeholder="Nome da categoria"
-              value={novaCategoria}
-              onChange={(e) => setNovaCategoria(e.target.value)}
+              placeholder="Ex: Alimentação, Transporte, Investimentos"
+              value={novaCategoria.nome}
+              onChange={(e) =>
+                setNovaCategoria((prev) => ({ ...prev, nome: e.target.value }))
+              }
+            />
+            {/* Seção de cores predefinidas */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                "#10B981",
+                "#3B82F6",
+                "#F59E0B",
+                "#EF4444",
+                "#8B5CF6",
+                "#0EA5E9",
+              ].map((cor) => (
+                <button
+                  key={cor}
+                  type="button"
+                  className="w-6 h-6 rounded-full border-2"
+                  style={{
+                    backgroundColor: cor,
+                    borderColor:
+                      novaCategoria.cor === cor ? "#000" : "transparent",
+                  }}
+                  onClick={() => setNovaCategoria((prev) => ({ ...prev, cor }))}
+                />
+              ))}
+            </div>
+            {/* Texto para cor personalizada */}
+            <span className="text-sm text-muted-foreground">
+              Ou escolha uma cor personalizada
+            </span>
+            <Input
+              type="color"
+              value={novaCategoria.cor}
+              onChange={(e) =>
+                setNovaCategoria((prev) => ({ ...prev, cor: e.target.value }))
+              }
             />
             <DialogFooter className="flex justify-end gap-2">
               <Button
@@ -205,16 +251,30 @@ export default function CategoriasPage() {
                 onClick={() => {
                   setModalAberto(false);
                   setCategoriaEditando(null);
-                  setNovaCategoria("");
+                  setNovaCategoria({ nome: "", cor: "#10B981" });
                 }}
               >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit">
+                {categoriaEditando !== null ? "Salvar" : "Adicionar"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <Button
+        className="fixed bottom-6 right-6 z-50 md:hidden bg-emerald-600 hover:bg-emerald-700 flex items-center gap-2 rounded-full p-4"
+        onClick={() => {
+          setNovaCategoria({ nome: "", cor: "#10B981" });
+          setCategoriaEditando(null);
+          setModalAberto(true);
+        }}
+        aria-label="Nova Categoria"
+      >
+        <HiOutlinePlusCircle className="w-6 h-6" />
+      </Button>
     </div>
   );
 }
