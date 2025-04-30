@@ -1,4 +1,4 @@
-import { Plan } from "@prisma/client";
+import { Plan, User } from "@prisma/client";
 import { WASocket } from "@whiskeysockets/baileys";
 import { logInfo } from "../utils/logger";
 import { callOpenAI } from "../../openai/call-openai";
@@ -7,12 +7,7 @@ import { safeParseOpenAIResponse } from "../../openai/parse-response";
 import { SummaryResult } from "../../openai/models";
 import prisma from "../../../lib/prisma";
 
-export async function handleResumo(
-  sock: WASocket,
-  phone: string,
-  user: { id: string },
-  text: string
-) {
+export async function handleResumo(sock: WASocket, user: User, text: string) {
   const meses = [
     "janeiro",
     "fevereiro",
@@ -31,23 +26,18 @@ export async function handleResumo(
   const textoMinusculo = text.toLowerCase();
   const mesEncontrado = meses.find((mes) => textoMinusculo.includes(mes));
 
-  const usuarioBanco = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { plan: true, lastSummaryAt: true },
-  });
-
   // Verifica se o usuário do plano FREE já gerou resumo hoje
-  if (usuarioBanco?.plan === Plan.FREE && usuarioBanco.lastSummaryAt) {
+  if (user.plan === Plan.FREE && user.lastSummaryAt) {
     const today = new Date();
     if (
-      usuarioBanco.lastSummaryAt.getDate() === today.getDate() &&
-      usuarioBanco.lastSummaryAt.getMonth() === today.getMonth() &&
-      usuarioBanco.lastSummaryAt.getFullYear() === today.getFullYear()
+      user.lastSummaryAt.getDate() === today.getDate() &&
+      user.lastSummaryAt.getMonth() === today.getMonth() &&
+      user.lastSummaryAt.getFullYear() === today.getFullYear()
     ) {
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: "⚡ Você já gerou seu resumo gratuito hoje! Para ter resumos ilimitados, conheça nossos planos Premium. 🚀",
       });
-      logInfo(`🚫 [Resumo bloqueado - plano FREE] Usuário: ${phone}`);
+      logInfo(`🚫 [Resumo Bloqueado - Plano FREE] Usuário: ${user.phone}`);
       return;
     }
   }
@@ -73,31 +63,30 @@ export async function handleResumo(
   });
 
   if (!transacoes.length) {
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
       text: `📭 Nenhum registro encontrado para ${
         mesEncontrado || "todos os meses"
       }.`,
     });
     logInfo(
-      `📭 [Resumo vazio] Mês: ${mesEncontrado || "Todos"} | Usuário: ${phone}`
+      `📭 [Resumo Vazio] Mês: ${mesEncontrado || "Todos"} | Usuário: ${
+        user.phone
+      }`
     );
     return;
   }
 
   const prompt = generateSummaryPrompt(transacoes);
 
-  const respostaOpenAI = await callOpenAI(
-    prompt,
-    usuarioBanco?.plan ?? Plan.FREE
-  );
+  const respostaOpenAI = await callOpenAI(prompt, user.plan ?? Plan.FREE);
 
   const resumo = safeParseOpenAIResponse<SummaryResult>(respostaOpenAI!);
 
   if (!resumo) {
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
       text: "⚡ Ocorreu um problema ao gerar seu resumo. Tente novamente em instantes.",
     });
-    logInfo(`❌ [Erro resumo OpenAI] Usuário: ${phone}`);
+    logInfo(`❌ [Erro resumo OpenAI] Usuário: ${user.phone}`);
     return;
   }
 
@@ -113,7 +102,7 @@ export async function handleResumo(
       return acc;
     }, {} as Record<string, number>);
 
-  await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+  await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
     text: `
 📊 *Resumo de ${mesEncontrado || "Todos os meses"}*
 
@@ -141,13 +130,15 @@ ${resumo.resumoTexto}
     data: { lastSummaryAt: new Date() },
   });
 
-  if (usuarioBanco?.plan === Plan.FREE) {
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-      text: "🚀 Gostou do resumo? Desbloqueie resumos automáticos diários, insights financeiros e consultoria personalizada com nossos planos Premium!\n\nResponda */planos* para conhecer as opções disponíveis! 💬",
+  if (user.plan === Plan.FREE) {
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
+      text: "🚀 Gostou do resumo? Desbloqueie resumos automáticos diários, insights financeiros e consultoria personalizada com nossos planos Premium!\n\nResponda */inscricao* para conhecer as opções disponíveis! 💬",
     });
   }
 
   logInfo(
-    `📈 [RESUMO ENVIADO] Mês: ${mesEncontrado || "Todos"} | Usuário: ${phone}`
+    `📈 [RESUMO ENVIADO] Mês: ${mesEncontrado || "Todos"} | Usuário: ${
+      user.phone
+    }`
   );
 }

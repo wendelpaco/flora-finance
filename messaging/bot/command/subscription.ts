@@ -1,21 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { Command } from "./command.interface";
 import { WASocket } from "@whiskeysockets/baileys";
-import { Plan } from "@prisma/client";
-import { logInfo, logError } from "../../utils/logger";
+import { User } from "@prisma/client";
+import { logError, logInfo } from "../utils/logger";
 
 export class SubscriptionCommand implements Command {
-  async execute(
-    sock: WASocket,
-    phone: string,
-    text: string,
-    plano: Plan
-  ): Promise<boolean> {
+  async execute(sock: WASocket, user: User): Promise<boolean> {
     try {
-      logInfo(`📝 [COMANDO] /inscricao solicitado por ${phone}`);
+      logInfo(`📝 [COMANDO] /inscricao solicitado por ${user.phone}`);
 
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: `🛒 *Planos Flora Finance:*
 
 1️⃣ *Plano Mensal* — R$9,90/mês
@@ -36,7 +29,7 @@ Lá você poderá optar pelo plano Free, Basic ou Pro de acordo com suas necessi
 
       return true;
     } catch (error) {
-      logError(`❌ Erro ao processar /inscricao para ${phone}: ${error}`);
+      logError(`❌ Erro ao processar /inscricao para ${user.phone}: ${error}`);
       return false;
     }
   }

@@ -1,20 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from "./command.interface";
 import { WASocket } from "@whiskeysockets/baileys";
-import { Plan } from "@prisma/client";
-import { logInfo, logError } from "../../utils/logger";
+import { User } from "@prisma/client";
+import { logError, logInfo } from "../utils/logger";
 
 export class OnboardingCommand implements Command {
-  async execute(
-    sock: WASocket,
-    phone: string,
-    text: string,
-    plano: Plan
-  ): Promise<boolean> {
+  async execute(sock: WASocket, user: User): Promise<boolean> {
     try {
-      logInfo(`👋 [COMANDO] Novo usuário iniciado: ${phone}`);
+      logInfo(`👋 [COMANDO] Novo usuário iniciado: ${user.phone}`);
 
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: `🌿 *Seja bem-vindo(a) ao Flora Finance!*  
 
 Aqui sua organização financeira fica fácil, prática e inteligente:
@@ -35,7 +29,6 @@ Assinantes têm acesso a *resumos ilimitados* e com análise avançada pela Flor
 🛠️ *Comandos úteis:*
 - */ajuda* → Como usar a Flora Finance
 - */menu* → Explorar funcionalidades
-- */planos* → Conhecer nossos planos
 - */inscricao* → Assinar e desbloquear recursos avançados
 
 💬 *Exemplos para começar agora:*  
@@ -47,7 +40,7 @@ Conte com a Flora para conquistar seus objetivos financeiros! 🚀💚`,
 
       return true;
     } catch (error) {
-      logError(`❌ Erro no onboarding para ${phone}: ${error}`);
+      logError(`❌ Erro no onboarding para ${user.phone}: ${error}`);
       return false;
     }
   }

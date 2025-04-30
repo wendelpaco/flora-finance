@@ -24,8 +24,7 @@ export function formatTransactionMessage({
   const value = formatarValorParaBRL(valor);
   const saldo = formatarValorParaBRL(saldoAtual);
 
-  return `
-🌿 Flora Finance
+  return `🌿 Flora Finance
 ✅ Transação Registrada com Sucesso!
 
 📝 Descrição: ${descricao}

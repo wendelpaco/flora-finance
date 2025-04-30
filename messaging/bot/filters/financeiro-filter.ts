@@ -1,22 +1,20 @@
 import { WASocket } from "@whiskeysockets/baileys";
 import { handleFinanceiro } from "../handlers/handleFinanceiro";
 import { logInfo } from "../utils/logger";
-import { Plan } from "@prisma/client";
+import { User } from "@prisma/client";
 
 interface FinanceiroFilterParams {
   sock: WASocket;
-  phone: string;
-  text: string;
-  plano: Plan;
+  user: User;
+  message: string;
 }
 
 export async function financeiroFilter({
   sock,
-  phone,
-  text,
-  plano,
+  user,
+  message,
 }: FinanceiroFilterParams) {
-  const textoLower = text.toLowerCase();
+  const textoLower = message.toLowerCase();
   const keywords = [
     "gastei",
     "ganhei",
@@ -43,15 +41,15 @@ export async function financeiroFilter({
   ];
 
   const isMensagemFinanceira = keywords.some((keyword) =>
-    textoLower.includes(keyword)
+    textoLower?.includes(keyword)
   );
   if (!isMensagemFinanceira) {
-    logInfo(`🔍 [MENSAGEM IGNORADA] - NÃO FINANCEIRA: ${text}`);
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    logInfo(`🔍 [MENSAGEM IGNORADA] - NÃO FINANCEIRA: ${message}`);
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
       text: `👋 Oi! Para registrar um gasto ou ganho, envie mensagens como:\n\n- "Gastei 50 reais no mercado"\n- "Recebi 200 reais de freelance"\n\nConte comigo para ajudar no seu controle financeiro! 📈✨`,
     });
     return;
   }
 
-  await handleFinanceiro({ sock, phone, text, plano });
+  await handleFinanceiro({ sock, user, message });
 }

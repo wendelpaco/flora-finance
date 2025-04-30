@@ -9,15 +9,15 @@ import path from "path";
  * @returns O caminho absoluto do arquivo de áudio salvo
  */
 export async function baixarAudioMensagem(
-  msg: proto.IWebMessageInfo,
+  message: proto.IWebMessageInfo,
   phone: string
 ): Promise<string> {
-  if (!msg.message?.audioMessage) {
+  if (!message.message?.audioMessage) {
     throw new Error("Nenhuma mensagem de áudio encontrada para baixar.");
   }
 
   const stream = await downloadContentFromMessage(
-    msg.message.audioMessage,
+    message.message.audioMessage,
     "audio"
   );
 

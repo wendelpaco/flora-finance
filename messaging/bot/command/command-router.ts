@@ -1,5 +1,5 @@
-import { WASocket } from "@whiskeysockets/baileys";
-import { Plan } from "@prisma/client";
+import { proto, WASocket } from "@whiskeysockets/baileys";
+import { User } from "@prisma/client";
 import { Command } from "./command.interface";
 import { HelpCommand } from "./help";
 import { SejaProCommand } from "./sejapro";
@@ -21,15 +21,14 @@ const commandsMap: { [key: string]: Command } = {
 
 export async function handleCommand(
   sock: WASocket,
-  phone: string,
-  text: string,
-  plano: Plan
+  user: User,
+  message: string
 ) {
-  const comando = text.toLowerCase().split(" ")[0]; // pegar a primeira palavra
-  const commandHandler = commandsMap[comando];
+  const comando = message.toLowerCase().split(" ")[0]; // pegar a primeira palavra
+  const commandHandler = commandsMap[comando!];
 
   if (commandHandler) {
-    return await commandHandler.execute(sock, phone, text, plano);
+    return await commandHandler.execute(sock, user, message);
   }
 
   return false;

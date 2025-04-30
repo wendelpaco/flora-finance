@@ -12,19 +12,18 @@ import { handleExclusaoAI } from "./handleExclusaoAI";
 
 export async function handleAudioMessage(
   sock: WASocket,
-  phone: string,
   user: User,
-  msg: proto.IWebMessageInfo
+  message: proto.IWebMessageInfo
 ) {
   let filePath = "";
 
   try {
-    filePath = await baixarAudioMensagem(msg, phone);
+    filePath = await baixarAudioMensagem(message, user.phone);
     const textoTranscrito = await transcreverAudioWhisper(filePath);
     const textoCorrigido = ajustarValorTexto(textoTranscrito);
 
     if (!textoCorrigido || textoCorrigido.trim().length < 5) {
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: "❌ Não consegui entender sua mensagem de voz. Pode tentar enviar novamente? 🎤",
       });
       return;
@@ -37,24 +36,23 @@ export async function handleAudioMessage(
     //   BUGFIX- Melhorar captura do comando resumo
     //-------------------------------------------------//
     if (textoCorrigido.toLowerCase().startsWith("resumo")) {
-      await handleResumo(sock, phone, user, textoCorrigido);
+      await handleResumo(sock, user, textoCorrigido);
     } else if (textoCorrigido.toLowerCase().startsWith("excluir")) {
-      await handleExclusaoAI(sock, phone, user, textoCorrigido, user?.plan);
+      await handleExclusaoAI(sock, user, textoCorrigido);
     } else if (textoCorrigido.toLowerCase().startsWith("editar")) {
-      await handleEdicaoAI(sock, phone, user, textoCorrigido, user?.plan);
+      await handleEdicaoAI(sock, user, textoCorrigido);
     } else {
       await financeiroFilter({
         sock,
-        phone,
-        text: textoCorrigido,
-        plano: user.plan,
+        user,
+        message: textoCorrigido,
       });
     }
   } catch (error) {
     logError(
       `❌ [ERROR] - ERRO AO INTERPRETAR ÁUDIO | NOME: ${user.phone} | MENSAGEM:${error}`
     );
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
       text: "❌ Ocorreu um erro ao interpretar seu áudio. Pode tentar mandar em texto? 📩",
     });
   } finally {

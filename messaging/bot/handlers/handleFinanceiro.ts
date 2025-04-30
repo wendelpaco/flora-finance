@@ -1,19 +1,19 @@
-import { Plan } from "@prisma/client";
-import { WASocket } from "@whiskeysockets/baileys";
+import prisma from "../../../lib/prisma";
+import { User } from "@prisma/client";
+import { proto, WASocket } from "@whiskeysockets/baileys";
 import { callOpenAI } from "../../openai/call-openai";
 import { safeParseOpenAIResponse } from "../../openai/parse-response";
 import { generateParseFinancialPrompt } from "../../openai/prompts/parse-financial";
 // import { generateDicaPrompt } from "../../openai/prompts/generate-dica";
 import { ParsedFinancialMessage } from "../../openai/models";
 import { logError, logInfo } from "../utils/logger";
-import prisma from "../../../lib/prisma";
+import { createOrGetCategory } from "../lib/db/createOrGetCategory";
 import { formatTransactionMessage } from "../lib/formatTransactionMessage";
 
 interface handleFinanceiroParams {
   sock: WASocket;
-  phone: string;
-  text: string;
-  plano: Plan;
+  user: User;
+  message: string;
 }
 
 function capitalize(text: string): string {
@@ -25,25 +25,25 @@ function capitalize(text: string): string {
 
 export async function handleFinanceiro({
   sock,
-  phone,
-  text,
-  plano,
+  user,
+  message,
 }: handleFinanceiroParams) {
   const agora = new Date();
   const ano = agora.getFullYear();
   const mes = agora.getMonth() + 1;
 
-  const prompt = generateParseFinancialPrompt(text);
-
-  const respostaOpenAI = await callOpenAI(prompt, plano);
+  const prompt = generateParseFinancialPrompt(message);
+  const respostaOpenAI = await callOpenAI(prompt, user.plan);
 
   const parsed = safeParseOpenAIResponse<ParsedFinancialMessage>(
     respostaOpenAI!
   );
 
-  if (!parsed) {
-    logError(`[ERRO AO INTERPRETAR] mensagem do telefone ${phone}: "${text}"`);
-    await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+  if (!parsed || !parsed.valor) {
+    logError(
+      `[ERRO AO INTERPRETAR] mensagem do telefone ${user.phone}: "${message}"`
+    );
+    await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
       text: "❌ Não consegui interpretar sua mensagem. Pode tentar de outra forma?",
     });
     return;
@@ -51,9 +51,9 @@ export async function handleFinanceiro({
 
   const { valor, descricao, categoria, tipo } = parsed;
 
-  const desc = parsed.descricao == "" ? text : descricao;
-  const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user) return;
+  const desc = parsed.descricao == "" ? message : descricao;
+
+  const categoriaRegistrada = await createOrGetCategory(user.id, categoria);
 
   await prisma.transaction.create({
     data: {
@@ -61,7 +61,7 @@ export async function handleFinanceiro({
       type: tipo.toUpperCase() as "GASTO" | "GANHO",
       description: desc,
       amount: valor,
-      category: categoria,
+      category: categoriaRegistrada.name,
       date: new Date(),
     },
   });
@@ -97,15 +97,17 @@ export async function handleFinanceiro({
   const saldoAtual = (ganhos._sum.amount || 0) - (gastos._sum.amount || 0);
 
   logInfo(
-    `🟢 [NOVO ${tipo.toUpperCase()}] Telefone: ${phone} | Descrição: ${desc} | Valor: R$${valor.toFixed(
-      2
-    )} | Categoria: ${categoria}`
+    `🟢 [NOVO ${tipo.toUpperCase()}] Telefone: ${
+      user.phone
+    } | Descrição: ${desc} | Valor: R$${valor.toFixed(2)} | Categoria: ${
+      categoriaRegistrada.name
+    }`
   );
 
   const mensagem = formatTransactionMessage({
     descricao: desc,
     valor,
-    categoria: capitalize(categoria),
+    categoria: capitalize(categoriaRegistrada.name),
     tipo: tipo.toUpperCase() as "GANHO" | "GASTO",
     conta: "Conta Pessoal", // ajustar se necessário futuramente
     data: new Date().toISOString(),
@@ -113,7 +115,7 @@ export async function handleFinanceiro({
     saldoAtual,
   });
 
-  await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+  await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
     text: mensagem,
   });
 }

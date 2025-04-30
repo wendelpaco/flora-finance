@@ -12,7 +12,7 @@ Mensagem: "${text}"
 Formato obrigatório da resposta:
 {
   "valor": número (ex: 50),
-  "categoria": "transporte" | "alimentação" | "lazer" | "saúde" | "assinaturas" | "vestuário" | "dívidas" | "outros" | "salário" | "freelance" | "presente" | "outros-ganhos",
+  "categoria": "transporte" | "alimentação" | "lazer" | "saúde" | "moradia" | "educação" | "carro" | "pet" | "viagem" | "assinaturas" | "vestuário" | "dívidas" | "outros" | "salário" | "freelance" | "presente" | "outros-ganhos",
   "descricao": "texto",  // descrição adicional do gasto ou ganho, como por exemplo "mercado", "salário"
   "tipo": "gasto" | "ganho"
 }

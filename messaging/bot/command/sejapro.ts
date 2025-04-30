@@ -1,24 +1,19 @@
 import { Command } from "./command.interface";
 import { WASocket } from "@whiskeysockets/baileys";
-import { Plan } from "@prisma/client";
-import { logInfo, logError } from "../../utils/logger";
+import { User, Plan } from "@prisma/client";
+import { logError, logInfo } from "../utils/logger";
 
 export class SejaProCommand implements Command {
-  async execute(
-    sock: WASocket,
-    phone: string,
-    text: string,
-    plano: Plan
-  ): Promise<boolean> {
+  async execute(sock: WASocket, user: User): Promise<boolean> {
     try {
-      logInfo(`🏆 [COMANDO] /sejapro solicitado por ${phone}`);
+      logInfo(`🏆 [Comando] /sejapro solicitado por ${user.phone}`);
 
-      if (plano === Plan.PRO) {
-        await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      if (user.plan === Plan.PRO) {
+        await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: `✨ Você já é um assinante PRO! Aproveite todos os recursos exclusivos do Flora Finance. 🚀`,
         });
       } else {
-        await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+        await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: `🚀 *Seja PRO!*
 
 Vantagens exclusivas:
@@ -34,7 +29,7 @@ Responda */inscricao* para escolher seu plano agora! 🌟`,
 
       return true;
     } catch (error) {
-      logError(`❌ Erro ao processar /sejapro para ${phone}: ${error}`);
+      logError(`❌ Erro ao processar /sejapro para ${user.phone}: ${error}`);
       return false;
     }
   }

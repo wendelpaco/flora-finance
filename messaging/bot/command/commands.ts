@@ -1,26 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Command } from "./command.interface";
 import { WASocket } from "@whiskeysockets/baileys";
-import { Plan } from "@prisma/client";
-import { logInfo, logError } from "../../utils/logger";
+import { User } from "@prisma/client";
+import { logError, logInfo } from "../utils/logger";
 
 export class CommandsCommand implements Command {
-  async execute(
-    sock: WASocket,
-    phone: string,
-    text: string,
-    plano: Plan
-  ): Promise<boolean> {
+  async execute(sock: WASocket, user: User): Promise<boolean> {
     try {
-      logInfo(`📚 [COMANDO] /comandos solicitado por ${phone}`);
+      logInfo(`📚 [Comando] /comandos solicitado por ${user.phone}`);
 
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: `📜 *Comandos Disponíveis*:
 
 - /menu — Menu principal
 - /ajuda — Como usar o Flora Finance
 - /comandos — Lista de comandos
-- /planos — Conheça nossos planos
+- /inscricao — Conheça nossos planos
 - /sejapro — Benefícios do plano PRO
 - /atendente — Falar com atendimento
 
@@ -33,7 +27,7 @@ export class CommandsCommand implements Command {
 
       return true;
     } catch (error) {
-      logError(`❌ Erro ao processar /comandos para ${phone}: ${error}`);
+      logError(`❌ Erro ao processar /comandos para ${user.phone}: ${error}`);
       return false;
     }
   }

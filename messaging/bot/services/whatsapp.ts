@@ -73,9 +73,9 @@ export async function startBot() {
 
     try {
       if (msg.message.audioMessage) {
-        await handleAudioMessage(sock, phone, user, msg);
+        await handleAudioMessage(sock, user, msg);
       } else {
-        await handleTextMessage(sock, phone, user, text);
+        await handleTextMessage(sock, user, text);
       }
     } catch (error) {
       logError(

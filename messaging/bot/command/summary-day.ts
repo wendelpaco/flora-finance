@@ -1,38 +1,24 @@
 import { WASocket } from "@whiskeysockets/baileys";
 import { Command } from "./command.interface";
-import { Plan } from "@prisma/client";
-import { callOpenAI } from "../../../openai/call-openai";
-import prisma from "../../../../lib/prisma";
-import { generateSummaryPrompt } from "../../../openai/prompts/generate-summary";
-import { safeParseOpenAIResponse } from "../../../openai/parse-response";
-import { SummaryResult } from "../../../openai/models";
-import { logError, logInfo } from "../../utils/logger";
+import { Plan, User } from "@prisma/client";
+import prisma from "@/lib/prisma";
+import { generateSummaryPrompt } from "@/messaging/openai/prompts/generate-summary";
+import { callOpenAI } from "@/messaging/openai/call-openai";
+import { SummaryResult } from "@/messaging/openai/models";
+import { safeParseOpenAIResponse } from "@/messaging/openai/parse-response";
+import { logError, logInfo } from "../utils/logger";
 
 export class SummaryDayCommand implements Command {
-  async execute(
-    sock: WASocket,
-    phone: string,
-    text: string,
-    plano: Plan
-  ): Promise<boolean> {
+  async execute(sock: WASocket, user: User): Promise<boolean> {
     // Verifica se o usuário é PRO
-    if (plano !== Plan.PRO) {
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+    if (user.plan !== Plan.PRO) {
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: "❌ Este comando é exclusivo para usuários PRO. Faça upgrade para acessar o resumo diário ou semanal.",
       });
       return false; // Retorna false quando o plano não é PRO
     }
 
-    // Lógica de geração de resumo (como no scheduler)
     try {
-      const user = await prisma.user.findUnique({ where: { phone } });
-      if (!user) {
-        await sock.sendMessage(`${phone}@s.whatsapp.net`, {
-          text: "❌ Usuário não encontrado.",
-        });
-        return false; // Retorna false se o usuário não for encontrado
-      }
-
       // Gerar transações do usuário
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -44,7 +30,7 @@ export class SummaryDayCommand implements Command {
       });
 
       if (!transacoes.length) {
-        await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+        await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: "❌ Não foram encontradas transações para hoje.",
         });
         return false; // Retorna false se não houver transações
@@ -84,7 +70,7 @@ export class SummaryDayCommand implements Command {
 
       // Verificar se os dados necessários existem
       if (!resumo.totalGanhos || !resumo.totalGastos || !resumo.saldoFinal) {
-        await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+        await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
           text: "❌ Falha ao gerar resumo. Dados financeiros incompletos.",
         });
         return false; // Retorna false se os dados estiverem faltando
@@ -114,11 +100,11 @@ ${resumo.resumoTexto}
         `,
       });
 
-      logInfo(`📩 [RESUMO] Enviado para ${phone}`);
+      logInfo(`📩 [RESUMO] Enviado para ${user.phone}`);
       return true; // Retorna true quando a mensagem foi enviada com sucesso
     } catch (error) {
-      logError(`Erro ao enviar resumo para ${phone}: ${error}`);
-      await sock.sendMessage(`${phone}@s.whatsapp.net`, {
+      logError(`Erro ao enviar resumo para ${user.phone}: ${error}`);
+      await sock.sendMessage(`${user.phone}@s.whatsapp.net`, {
         text: "❌ Ocorreu um erro ao gerar o seu resumo. Tente novamente mais tarde.",
       });
       return false; // Retorna false em caso de erro
