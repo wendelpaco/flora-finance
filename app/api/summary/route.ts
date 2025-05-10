@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 // import { getServerSession } from "next-auth"; // Suponho que usa next-auth
 import prisma from "../../../lib/prisma";
+import { TransactionType } from "@prisma/client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -36,11 +37,11 @@ export async function GET(request: Request) {
     }
 
     const totalGanhos = transactions
-      .filter((t) => t.type === "GANHO")
+      .filter((t) => t.type === TransactionType.income)
       .reduce((acc, t) => acc + t.amount, 0);
 
     const totalGastos = transactions
-      .filter((t) => t.type === "GASTO")
+      .filter((t) => t.type === TransactionType.expense)
       .reduce((acc, t) => acc + t.amount, 0);
 
     const saldo = totalGanhos - totalGastos;
@@ -50,10 +51,10 @@ export async function GET(request: Request) {
 
     for (const t of transactions) {
       const categoria = t.category || "outros" || "outros-ganhos";
-      if (t.type === "GASTO") {
+      if (t.type === TransactionType.expense) {
         gastosPorCategoria[categoria] =
           (gastosPorCategoria[categoria] || 0) + t.amount;
-      } else if (t.type === "GANHO") {
+      } else if (t.type === TransactionType.income) {
         ganhosPorCategoria[categoria] =
           (ganhosPorCategoria[categoria] || 0) + t.amount;
       }
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
 
     const recentTransactions = transactions
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .slice(0, 10);
+      .slice(0, 100);
 
     // Novo agrupamento para histórico
     const historicoDiario: { dia: string; ganhos: number; gastos: number }[] =
@@ -82,11 +83,15 @@ export async function GET(request: Request) {
       const label = day.toLocaleDateString("pt-BR", { weekday: "short" });
 
       const ganhosDia = user.transactions
-        .filter((t) => t.type === "GANHO" && sameDay(t.date, day))
+        .filter(
+          (t) => t.type === TransactionType.income && sameDay(t.date, day)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       const gastosDia = user.transactions
-        .filter((t) => t.type === "GASTO" && sameDay(t.date, day))
+        .filter(
+          (t) => t.type === TransactionType.expense && sameDay(t.date, day)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       historicoDiario.push({
@@ -103,11 +108,18 @@ export async function GET(request: Request) {
       const label = `Semana ${6 - i}`;
 
       const ganhosSemana = user.transactions
-        .filter((t) => t.type === "GANHO" && inSameWeek(t.date, startOfWeek))
+        .filter(
+          (t) =>
+            t.type === TransactionType.income && inSameWeek(t.date, startOfWeek)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       const gastosSemana = user.transactions
-        .filter((t) => t.type === "GASTO" && inSameWeek(t.date, startOfWeek))
+        .filter(
+          (t) =>
+            t.type === TransactionType.expense &&
+            inSameWeek(t.date, startOfWeek)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       historicoSemanal.push({
@@ -123,11 +135,15 @@ export async function GET(request: Request) {
       const label = month.toLocaleDateString("pt-BR", { month: "short" });
 
       const ganhosMes = user.transactions
-        .filter((t) => t.type === "GANHO" && sameMonth(t.date, month))
+        .filter(
+          (t) => t.type === TransactionType.income && sameMonth(t.date, month)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       const gastosMes = user.transactions
-        .filter((t) => t.type === "GASTO" && sameMonth(t.date, month))
+        .filter(
+          (t) => t.type === TransactionType.expense && sameMonth(t.date, month)
+        )
         .reduce((acc, t) => acc + t.amount, 0);
 
       historicoMensal.push({

@@ -8,47 +8,98 @@ datasource db {
 }
 
 model User {
-  id             String         @id @default(cuid())
-  phone          String         @unique
-  name           String?
-  plan           Plan           @default(FREE)
-  createdAt      DateTime       @default(now())
-  enableSummary  Boolean        @default(true)
-  transactions   Transaction[]
-  lastSummaryAt  DateTime?       // ✅ NOVO CAMPO
-  categories     Category[]
-}
-
-model Transaction {
-  id          String      @id @default(cuid())
-  userId      String
-  type        TransactionType
-  description String
-  amount      Float
-  category    String? // Opcional
-  date        DateTime
-  createdAt   DateTime    @default(now())
-  user        User        @relation(fields: [userId], references: [id])
-}
-
-model Category {
-  id          String    @id @default(cuid())
-  userId      String
-  name        String
-  color       String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  user        User      @relation(fields: [userId], references: [id])
-}
-
-enum Plan {
-  FREE
-  BASIC
-  PRO
+  id           String              @id @default(uuid())
+  phone        String              @unique
+  name         String?
+  email        String?
+  onboardingStep String?
+  transactions Transaction[]
+  config       UserConfig?
+  message      MessageLog[]
+  goals        Goal[]
+  achievements AchievementRecord[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  planId       String?
+  plan         Plan?               @relation(fields: [planId], references: [id])
 }
 
 enum TransactionType {
-  GASTO
-  GANHO
+  expense
+  income
+}
+
+model Transaction {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  amount    Float
+  category  String
+  note      String?
+  date      DateTime         // Representa a data real do gasto ou ganho
+  type      TransactionType  // Tipo de transação: "expense" ou "income"
+  code      String?          @unique  // Código curto para identificação da transação (ex: A0001)
+  createdAt DateTime         @default(now())
+}
+
+model UserConfig {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  alertHour        Int      @default(19)
+  alertEnabled     Boolean  @default(true)
+  preferredSummary String?
+  language         String   @default("pt-BR")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MessageLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  direction String // "sent" | "received"
+  timestamp DateTime @default(now())
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String // "saving" | "limit"
+  category  String? // categoria da meta (ex: "delivery"), se for do tipo limit
+  target    Float
+  current   Float    @default(0)
+  deadline  DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Achievement {
+  id          String              @id @default(uuid())
+  code        String              @unique
+  title       String
+  description String
+  icon        String?
+  createdAt   DateTime            @default(now())
+  records     AchievementRecord[]
+}
+
+model AchievementRecord {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  earnedAt      DateTime    @default(now())
+}
+
+model Plan {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float    @default(0) // 0 = gratuito
+  features  String? // descrição ou JSON compactado
+  users     User[]
+  createdAt DateTime @default(now())
 }

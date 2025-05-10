@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { UserHeader } from "@/components/UserHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,15 +22,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Transaction } from "@prisma/client";
+import { Transaction, TransactionType } from "@prisma/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { HiOutlineSwitchHorizontal } from "react-icons/hi";
+import { useQuery } from "@tanstack/react-query";
 
 type TransactionForm = Omit<Transaction, "user">;
 
 export default function TransacoesPage() {
-  const [transacoes, setTransacoes] = useState<Transaction[] | null>(null);
   const [transacaoEditandoIndex, setTransacaoEditandoIndex] = useState<
     number | null
   >(null);
@@ -38,62 +38,55 @@ export default function TransacoesPage() {
   const [novaTransacao, setNovaTransacao] = useState<TransactionForm>({
     id: "",
     userId: "",
-    type: "GASTO",
-    description: "",
+    type: TransactionType.expense,
+    note: "",
     amount: 0,
     category: "",
     date: new Date(),
+    code: null,
     createdAt: new Date(),
   });
+  const [periodo, setPeriodo] = useState<"hoje" | "semana" | "mes">("mes");
+
+  // React Query para buscar transações
+  const fetchTransacoes = async (periodo: "hoje" | "semana" | "mes") => {
+    const res = await fetch(`/api/summary?periodo=${periodo}`);
+    if (!res.ok) throw new Error("Erro ao buscar transações");
+    return res.json();
+  };
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["transacoes", periodo],
+    queryFn: () => fetchTransacoes(periodo),
+  });
+
+  const transacoes: Transaction[] | null = data?.recentTransactions ?? null;
 
   // Resumo dos valores
   const totalGanhos = transacoes
     ? transacoes
-        .filter((t) => t.type === "GANHO")
+        .filter((t) => t.type === TransactionType.income)
         .reduce((acc, t) => acc + t.amount, 0)
     : 0;
 
   const totalGastos = transacoes
     ? transacoes
-        .filter((t) => t.type === "GASTO")
+        .filter((t) => t.type === TransactionType.expense)
         .reduce((acc, t) => acc + Math.abs(t.amount), 0)
     : 0;
 
   const saldo = totalGanhos - totalGastos;
 
-  useEffect(() => {
-    async function fetchTransacoes() {
-      try {
-        const res = await fetch("/api/summary?periodo=mes");
-        if (!res.ok) throw new Error("Erro ao buscar transações");
-        const data = await res.json();
-        if (data?.recentTransactions) {
-          setTransacoes(data.recentTransactions);
-        } else {
-          setTransacoes([]);
-        }
-      } catch {
-        setTransacoes([]);
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Não foi possível carregar as transações.",
-        });
-      }
-    }
-
-    fetchTransacoes();
-  }, []);
-
   function abrirModalNovaTransacao() {
     setNovaTransacao({
       id: "",
       userId: "",
-      type: "GASTO",
-      description: "",
+      type: TransactionType.expense,
+      note: "",
       amount: 0,
       category: "",
       date: new Date(),
+      code: null,
       createdAt: new Date(),
     });
     setTransacaoEditandoIndex(null);
@@ -102,7 +95,7 @@ export default function TransacoesPage() {
 
   function salvarTransacao() {
     if (
-      !novaTransacao.description.trim() ||
+      !novaTransacao.note?.trim() ||
       !novaTransacao.category?.trim() ||
       !novaTransacao.date
     ) {
@@ -115,37 +108,13 @@ export default function TransacoesPage() {
     }
 
     if (transacaoEditandoIndex !== null) {
-      setTransacoes((prev) => {
-        if (!prev) return [novaTransacao as Transaction];
-        const atualizadas = [...prev];
-        atualizadas[transacaoEditandoIndex] = {
-          ...novaTransacao,
-          id: atualizadas[transacaoEditandoIndex].id || novaTransacao.id || "",
-          createdAt:
-            atualizadas[transacaoEditandoIndex].createdAt || new Date(),
-          userId: atualizadas[transacaoEditandoIndex].userId || "",
-          type: novaTransacao.type,
-          amount: novaTransacao.amount,
-          category: novaTransacao.category,
-          date: novaTransacao.date,
-          description: novaTransacao.description,
-        };
-        return atualizadas;
-      });
+      // Implemente a lógica para atualizar uma transação existente
       toast({
         title: "Transação atualizada",
         description: "Sua transação foi atualizada com sucesso.",
       });
     } else {
-      setTransacoes((prev) => {
-        const nova = {
-          ...novaTransacao,
-          id: crypto.randomUUID(),
-          createdAt: new Date(),
-          userId: novaTransacao.userId || "",
-        } as Transaction;
-        return prev ? [...prev, nova] : [nova];
-      });
+      // Implemente a lógica para adicionar uma nova transação
       toast({
         title: "Transação adicionada",
         description: "Sua nova transação foi adicionada com sucesso.",
@@ -157,15 +126,12 @@ export default function TransacoesPage() {
   }
 
   function excluirTransacao(index: number) {
-    const confirmacao = confirm("Deseja realmente excluir esta transação?");
+    const confirmacao = confirm(
+      "Deseja realmente excluir esta transação? " + index
+    );
     if (!confirmacao) return;
 
-    setTransacoes((prev) => {
-      if (!prev) return [];
-      const atualizadas = prev.filter((_, i) => i !== index);
-      return atualizadas;
-    });
-
+    // Implemente a lógica para excluir uma transação
     toast({
       title: "Transação excluída",
       description: "A transação foi removida com sucesso.",
@@ -186,6 +152,28 @@ export default function TransacoesPage() {
           Organize seus ganhos e despesas com tecnologia de ponta.
         </p>
 
+        {/* Seletor de período */}
+        <div className="flex gap-2 mb-2">
+          <Button
+            variant={periodo === "hoje" ? "default" : "outline"}
+            onClick={() => setPeriodo("hoje")}
+          >
+            Hoje
+          </Button>
+          <Button
+            variant={periodo === "semana" ? "default" : "outline"}
+            onClick={() => setPeriodo("semana")}
+          >
+            Semana
+          </Button>
+          <Button
+            variant={periodo === "mes" ? "default" : "outline"}
+            onClick={() => setPeriodo("mes")}
+          >
+            Mês
+          </Button>
+        </div>
+
         {/* Cards de resumo com motion */}
         <AnimatePresence mode="popLayout">
           <motion.div
@@ -204,7 +192,7 @@ export default function TransacoesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {transacoes === null ? (
+                  {isLoading ? (
                     <div className="h-8 w-24 bg-gray-300 dark:bg-zinc-700 rounded animate-pulse" />
                   ) : (
                     <span className="text-2xl font-semibold text-emerald-600">
@@ -227,7 +215,7 @@ export default function TransacoesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {transacoes === null ? (
+                  {isLoading ? (
                     <div className="h-8 w-24 bg-gray-300 dark:bg-zinc-700 rounded animate-pulse" />
                   ) : (
                     <span className="text-2xl font-semibold text-red-600">
@@ -250,7 +238,7 @@ export default function TransacoesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {transacoes === null ? (
+                  {isLoading ? (
                     <div className="h-8 w-24 bg-gray-300 dark:bg-zinc-700 rounded animate-pulse" />
                   ) : (
                     <span
@@ -279,17 +267,7 @@ export default function TransacoesPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setTransacoes(null);
-                  fetch("/api/summary?periodo=mes")
-                    .then((res) => res.json())
-                    .then((data) => setTransacoes(data.recentTransactions))
-                    .catch(() =>
-                      toast({
-                        variant: "destructive",
-                        title: "Erro",
-                        description: "Erro ao atualizar transações.",
-                      })
-                    );
+                  refetch();
                 }}
                 className="flex items-center gap-2 border border-emerald-600 text-emerald-600 hover:bg-emerald-50"
               >
@@ -311,7 +289,7 @@ export default function TransacoesPage() {
         {/* Conteúdo principal */}
         <section className="mt-10">
           {/* Skeleton loader */}
-          {transacoes === null && (
+          {isLoading && (
             <div className="space-y-6">
               {[...Array(5)].map((_, i) => (
                 <div
@@ -323,7 +301,7 @@ export default function TransacoesPage() {
           )}
 
           {/* EmptyState elegante */}
-          {transacoes !== null && transacoes.length === 0 && (
+          {!isLoading && transacoes && transacoes.length === 0 && (
             <EmptyState
               icon={
                 <HiOutlineChartBar className="w-12 h-12 text-emerald-600" />
@@ -343,7 +321,7 @@ export default function TransacoesPage() {
           )}
 
           {/* Tabela de transações */}
-          {transacoes !== null && transacoes.length > 0 && (
+          {!isLoading && transacoes && transacoes.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -382,11 +360,11 @@ export default function TransacoesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transacoes.map((t, index) => {
-                    const isReceita = t.type === "GANHO";
+                  {transacoes.map((t) => {
+                    const isReceita = t.type === "income";
                     return (
                       <motion.tr
-                        key={t.id || index}
+                        key={t.id}
                         layout
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -397,7 +375,7 @@ export default function TransacoesPage() {
                         <td className="py-3 px-6 whitespace-nowrap">
                           {new Date(t.date).toLocaleDateString("pt-BR")}
                         </td>
-                        <td className="py-3 px-6">{t.description}</td>
+                        <td className="py-3 px-6">{t.note}</td>
                         <td className="py-3 px-6">{t.category}</td>
                         <td className="py-3 px-6 whitespace-nowrap">
                           <span
@@ -444,13 +422,14 @@ export default function TransacoesPage() {
                                 id: t.id,
                                 userId: t.userId,
                                 type: t.type,
-                                description: t.description,
+                                note: t.note,
                                 amount: t.amount,
                                 category: t.category,
                                 date: new Date(t.date),
+                                code: t.code,
                                 createdAt: new Date(t.createdAt),
                               });
-                              setTransacaoEditandoIndex(index);
+                              setTransacaoEditandoIndex(null);
                               setModalAberto(true);
                             }}
                           >
@@ -461,7 +440,7 @@ export default function TransacoesPage() {
                             size="sm"
                             variant="ghost"
                             className="text-xs px-3 text-red-600 hover:bg-red-100 dark:hover:bg-red-900"
-                            onClick={() => excluirTransacao(index)}
+                            onClick={() => excluirTransacao(0)}
                           >
                             <HiOutlineTrash className="w-4 h-4" />
                             Excluir
@@ -495,19 +474,19 @@ export default function TransacoesPage() {
             >
               <div>
                 <label
-                  htmlFor="description"
+                  htmlFor="note"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
                   Descrição <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  id="description"
+                  id="note"
                   placeholder="Descrição da transação"
-                  value={novaTransacao.description}
+                  value={novaTransacao.note || ""}
                   onChange={(e) =>
                     setNovaTransacao((prev) => ({
                       ...prev,
-                      description: e.target.value,
+                      note: e.target.value,
                     }))
                   }
                   required
@@ -594,13 +573,13 @@ export default function TransacoesPage() {
                   onChange={(e) =>
                     setNovaTransacao((prev) => ({
                       ...prev,
-                      type: e.target.value as "GANHO" | "GASTO",
+                      type: e.target.value as TransactionType,
                     }))
                   }
                   required
                 >
-                  <option value="GASTO">Despesa</option>
-                  <option value="GANHO">Receita</option>
+                  <option value="expense">Despesa</option>
+                  <option value="income">Receita</option>
                 </select>
               </div>
 

@@ -7,12 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prisma": "prisma",
     "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "bot2": "npx tsx scripts/whatsapp-bot.ts",
-    "bot": "npx tsx watch ./messaging/bot/bot.ts",
-    "test": "npx tsx watch ./messaging/bot/services/openai.ts"
+    "migrate": "prisma migrate dev"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

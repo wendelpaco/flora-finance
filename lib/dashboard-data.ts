@@ -1,4 +1,4 @@
-import { Transaction } from "../app/types/Transaction";
+import { TransactionType, Transaction } from "@prisma/client";
 import prisma from "./prisma";
 import { subDays, startOfMonth, endOfMonth } from "date-fns";
 
@@ -46,11 +46,11 @@ export async function fetchDashboardData(
   });
 
   const ganhos = transactions
-    .filter((t) => t.type === "GANHO")
+    .filter((t) => t.type === TransactionType.income)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const gastos = transactions
-    .filter((t) => t.type === "GASTO")
+    .filter((t) => t.type === TransactionType.expense)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const saldo = ganhos - gastos;
@@ -70,11 +70,11 @@ export async function fetchDashboardData(
   });
 
   const ganhosAnteriores = transacoesMesAnterior
-    .filter((t) => t.type === "GANHO")
+    .filter((t) => t.type === TransactionType.income)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const gastosAnteriores = transacoesMesAnterior
-    .filter((t) => t.type === "GASTO")
+    .filter((t) => t.type === TransactionType.expense)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const saldoAnterior = ganhosAnteriores - gastosAnteriores;
@@ -93,12 +93,14 @@ export async function fetchDashboardData(
     categorias,
     transactions: transactions.map((t) => ({
       id: t.id,
-      descricao: t.description,
-      valor: t.amount,
-      tipo: t.type,
-      categoria: t.category ?? "Outros",
-      pago: new Date(t.date) <= new Date(),
-      data: t.date,
+      note: t.note ?? "",
+      amount: t.amount,
+      type: t.type,
+      date: t.date,
+      code: t.code,
+      createdAt: t.createdAt,
+      userId: t.userId,
+      category: t.category,
     })),
   };
 }
