@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { HiMenuAlt2, HiX } from "react-icons/hi";
 import { signOut } from "next-auth/react";
 import { ITEMMENU } from "@/lib/item-menu";
+import Logo from "@/components/ui/Logo";
 
 export function PrivateLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -27,11 +28,11 @@ export function PrivateLayout({ children }: { children: ReactNode }) {
       >
         <div
           className={clsx(
-            "text-2xl font-bold text-emerald-600 transition-all mb-6",
-            !isSidebarOpen && "text-sm"
+            "flex items-center justify-center transition-all mb-6",
+            isSidebarOpen ? "py-2" : "py-1"
           )}
         >
-          {isSidebarOpen ? "Flora Finance" : "FF"}
+          <Logo size={isSidebarOpen ? 48 : 36} className="mx-auto" />
         </div>
         <nav className="flex flex-col gap-2">
           {ITEMMENU.map(({ label, href, icon: Icon }) => {

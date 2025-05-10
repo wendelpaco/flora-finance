@@ -11,7 +11,7 @@ import {
 export const ITEMMENU = [
   {
     label: "Visão Geral",
-    href: "/painel",
+    href: "/painel/visao-geral",
     icon: HiOutlineChartBar,
   },
   {

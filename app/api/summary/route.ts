@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const periodo =
     (searchParams.get("periodo") as "hoje" | "semana" | "mes") || "mes";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
 
   try {
     // const session = await getServerSession(authOptions);
@@ -15,32 +17,106 @@ export async function GET(request: Request) {
     //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     // }
 
-    const user = await prisma.user.findUnique({
-      where: { phone: "5521968577262" },
-      include: { transactions: true },
-    });
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { phone: "5521968577262" },
+      });
+    } catch (error) {
+      console.error("Erro ao buscar usuário:", error);
+      return NextResponse.json(
+        { error: "Erro ao buscar usuário" },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    let transactions = user.transactions;
-
-    // Filtrar transações conforme o período
     const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now);
     if (periodo === "hoje") {
-      transactions = transactions.filter((t) => sameDay(t.date, now));
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0
+      );
+      endDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999
+      );
     } else if (periodo === "semana") {
-      transactions = transactions.filter((t) => inSameWeek(t.date, now));
-    } else if (periodo === "mes") {
-      transactions = transactions.filter((t) => sameMonth(t.date, now));
+      const dayOfWeek = now.getDay();
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - dayOfWeek);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      endDate = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      );
     }
 
-    const totalGanhos = transactions
+    // Buscar todas as transações do período para os totais
+    const allTransactions = await prisma.transaction.findMany({
+      where: {
+        userId: user.id,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    // Buscar apenas as transações da página atual
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: user.id,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: { date: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    const totalTransactions = await prisma.transaction.count({
+      where: {
+        userId: user.id,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    const totalGanhos = allTransactions
       .filter((t) => t.type === TransactionType.income)
       .reduce((acc, t) => acc + t.amount, 0);
 
-    const totalGastos = transactions
+    const totalGastos = allTransactions
       .filter((t) => t.type === TransactionType.expense)
       .reduce((acc, t) => acc + t.amount, 0);
 
@@ -60,11 +136,8 @@ export async function GET(request: Request) {
       }
     }
 
-    const recentTransactions = transactions
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .slice(0, 100);
+    const recentTransactions = transactions;
 
-    // Novo agrupamento para histórico
     const historicoDiario: { dia: string; ganhos: number; gastos: number }[] =
       [];
     const historicoSemanal: {
@@ -75,20 +148,18 @@ export async function GET(request: Request) {
     const historicoMensal: { mes: string; ganhos: number; gastos: number }[] =
       [];
 
-    // Agrupar por dia (últimos 7 dias)
     for (let i = 6; i >= 0; i--) {
       const day = new Date(now);
       day.setDate(day.getDate() - i);
-      // Dia da semana abreviado (ex: 'seg', 'ter')
       const label = day.toLocaleDateString("pt-BR", { weekday: "short" });
 
-      const ganhosDia = user.transactions
+      const ganhosDia = transactions
         .filter(
           (t) => t.type === TransactionType.income && sameDay(t.date, day)
         )
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosDia = user.transactions
+      const gastosDia = transactions
         .filter(
           (t) => t.type === TransactionType.expense && sameDay(t.date, day)
         )
@@ -101,20 +172,19 @@ export async function GET(request: Request) {
       });
     }
 
-    // Agrupar por semana (últimas 6 semanas)
     for (let i = 5; i >= 0; i--) {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(startOfWeek.getDate() - i * 7);
       const label = `Semana ${6 - i}`;
 
-      const ganhosSemana = user.transactions
+      const ganhosSemana = transactions
         .filter(
           (t) =>
             t.type === TransactionType.income && inSameWeek(t.date, startOfWeek)
         )
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosSemana = user.transactions
+      const gastosSemana = transactions
         .filter(
           (t) =>
             t.type === TransactionType.expense &&
@@ -129,18 +199,17 @@ export async function GET(request: Request) {
       });
     }
 
-    // Agrupar por mês (últimos 6 meses)
     for (let i = 5; i >= 0; i--) {
       const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const label = month.toLocaleDateString("pt-BR", { month: "short" });
 
-      const ganhosMes = user.transactions
+      const ganhosMes = transactions
         .filter(
           (t) => t.type === TransactionType.income && sameMonth(t.date, month)
         )
         .reduce((acc, t) => acc + t.amount, 0);
 
-      const gastosMes = user.transactions
+      const gastosMes = transactions
         .filter(
           (t) => t.type === TransactionType.expense && sameMonth(t.date, month)
         )
@@ -175,6 +244,7 @@ export async function GET(request: Request) {
       gastosPorCategoria,
       ganhosPorCategoria,
       recentTransactions,
+      totalTransactions,
       historico: {
         diario: historicoDiario,
         semanal: historicoSemanal,
@@ -185,7 +255,7 @@ export async function GET(request: Request) {
         saldo: item.ganhos - item.gastos,
       })),
       categorias,
-      categoriasGanhos, // novo campo adicionado
+      categoriasGanhos,
     });
   } catch (error) {
     console.error("[DASHBOARD_SUMMARY]", error);
@@ -210,7 +280,6 @@ function inSameWeek(date: Date, refDate: Date) {
   start.setDate(refDate.getDate() - refDate.getDay());
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  // Zerar horas para comparação correta
   start.setHours(0, 0, 0, 0);
   end.setHours(23, 59, 59, 999);
   return date >= start && date <= end;

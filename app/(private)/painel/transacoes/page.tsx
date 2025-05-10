@@ -30,6 +30,15 @@ import { useQuery } from "@tanstack/react-query";
 
 type TransactionForm = Omit<Transaction, "user">;
 
+type TransacoesResponse = {
+  recentTransactions: Transaction[];
+  totalTransactions: number;
+  totalGanhos: number;
+  totalGastos: number;
+  saldo: number;
+  // outros campos se necessário
+};
+
 export default function TransacoesPage() {
   const [transacaoEditandoIndex, setTransacaoEditandoIndex] = useState<
     number | null
@@ -47,35 +56,37 @@ export default function TransacoesPage() {
     createdAt: new Date(),
   });
   const [periodo, setPeriodo] = useState<"hoje" | "semana" | "mes">("mes");
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 10;
 
   // React Query para buscar transações
-  const fetchTransacoes = async (periodo: "hoje" | "semana" | "mes") => {
-    const res = await fetch(`/api/summary?periodo=${periodo}`);
+  const fetchTransacoes = async (
+    periodo: "hoje" | "semana" | "mes",
+    page: number,
+    pageSize: number
+  ) => {
+    const res = await fetch(
+      `/api/summary?periodo=${periodo}&page=${page}&pageSize=${pageSize}`
+    );
     if (!res.ok) throw new Error("Erro ao buscar transações");
     return res.json();
   };
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["transacoes", periodo],
-    queryFn: () => fetchTransacoes(periodo),
-  });
+  const { data, isLoading, isFetching, refetch } = useQuery<TransacoesResponse>(
+    {
+      queryKey: ["transacoes", periodo, paginaAtual, itensPorPagina],
+      queryFn: () => fetchTransacoes(periodo, paginaAtual, itensPorPagina),
+    }
+  );
 
   const transacoes: Transaction[] | null = data?.recentTransactions ?? null;
+  const totalTransactions: number = data?.totalTransactions ?? 0;
+  const totalPaginas = Math.ceil(totalTransactions / itensPorPagina);
 
   // Resumo dos valores
-  const totalGanhos = transacoes
-    ? transacoes
-        .filter((t) => t.type === TransactionType.income)
-        .reduce((acc, t) => acc + t.amount, 0)
-    : 0;
-
-  const totalGastos = transacoes
-    ? transacoes
-        .filter((t) => t.type === TransactionType.expense)
-        .reduce((acc, t) => acc + Math.abs(t.amount), 0)
-    : 0;
-
-  const saldo = totalGanhos - totalGastos;
+  const totalGanhos = data?.totalGanhos ?? 0;
+  const totalGastos = data?.totalGastos ?? 0;
+  const saldo = data?.saldo ?? 0;
 
   function abrirModalNovaTransacao() {
     setNovaTransacao({
@@ -141,8 +152,7 @@ export default function TransacoesPage() {
   return (
     <div className="relative">
       <UserHeader className="absolute top-6 right-6 z-50" />
-
-      <div className="flex flex-col gap-6 p-6 md:p-10">
+      <div className="flex flex-col gap-8 p-6 md:p-10">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
           <HiOutlineSwitchHorizontal className="w-6 h-6 text-emerald-600" />
           Minhas Transações
@@ -266,13 +276,39 @@ export default function TransacoesPage() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => {
-                  refetch();
-                }}
+                onClick={() => refetch()}
                 className="flex items-center gap-2 border border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                disabled={isFetching}
               >
-                <HiOutlineArrowPath className="w-5 h-5" />
-                Atualizar
+                {isFetching ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-emerald-600"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8z"
+                      />
+                    </svg>
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineArrowPath className="w-5 h-5" />
+                    Atualizar
+                  </>
+                )}
               </Button>
 
               <Button
@@ -332,7 +368,7 @@ export default function TransacoesPage() {
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   Histórico de Transações
                   <span className="inline-block bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200 text-sm font-semibold px-3 py-1 rounded-full">
-                    {transacoes.length}
+                    {totalTransactions}
                   </span>
                 </h2>
               </div>
@@ -451,6 +487,35 @@ export default function TransacoesPage() {
                   })}
                 </tbody>
               </table>
+              {/* Paginação */}
+              {totalPaginas > 1 && (
+                <div className="flex justify-center items-center gap-8 mt-8 pb-[10px]">
+                  <Button
+                    onClick={() =>
+                      setPaginaAtual((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={paginaAtual === 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                  >
+                    <HiOutlineArrowPath className="w-5 h-5" /> Anterior
+                  </Button>
+                  <div className="flex items-center gap-3 text-base font-semibold text-emerald-700">
+                    <span className="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-full text-emerald-700">
+                      {paginaAtual}
+                    </span>
+                    <span className="text-gray-500">de {totalPaginas}</span>
+                  </div>
+                  <Button
+                    onClick={() =>
+                      setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas))
+                    }
+                    disabled={paginaAtual === totalPaginas}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                  >
+                    Próxima <HiOutlineArrowPath className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
             </motion.div>
           )}
         </section>
