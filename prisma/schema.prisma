@@ -8,10 +8,10 @@ datasource db {
 }
 
 model User {
-  id           String              @id @default(uuid())
+  id           String              @id @default(cuid())
   phone        String              @unique
   name         String?
-  email        String?
+  email        String?            @unique
   onboardingStep String?
   transactions Transaction[]
   config       UserConfig?
@@ -64,16 +64,17 @@ model MessageLog {
 }
 
 model Goal {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  type      String // "saving" | "limit"
-  category  String? // categoria da meta (ex: "delivery"), se for do tipo limit
-  target    Float
-  current   Float    @default(0)
-  deadline  DateTime
+  id        String   @id @default(cuid())
+  phone     String
+  user      User     @relation(fields: [phone], references: [phone])
+  name      String
+  target    Int      // valor em centavos
+  current   Int      // valor em centavos
+  deadline  DateTime? // data limite opcional
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([phone])
 }
 
 model Achievement {
@@ -102,4 +103,14 @@ model Plan {
   features  String? // descrição ou JSON compactado
   users     User[]
   createdAt DateTime @default(now())
+}
+
+model Authentication {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  status    String   @default("PENDING") // PENDING, CONFIRMED, EXPIRED
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
