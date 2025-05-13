@@ -50,7 +50,7 @@ export default function LoginPage() {
 
   const handleWhatsAppLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.match(/^\d{10,15}$/)) {
+    if (!phone.match(/^[0-9]{10,15}$/)) {
       toast({
         title: "Digite um número de telefone válido.",
         variant: "destructive",
@@ -59,12 +59,13 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
+      const fullPhone = "55" + phone;
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_WHATSAPP_URL_BOT}/api/auth/whatsapp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone: fullPhone }),
         }
       );
       if (!response.ok) throw new Error("Erro ao enviar código");
