@@ -69,7 +69,7 @@ type UserProps = {
 export function VisaoGeralPageClient({ user }: UserProps) {
   const [periodo, setPeriodo] = useState<"mes" | "semana">("mes");
 
-  console.log(user);
+  console.log(user.email);
 
   return (
     <div className="relative">
