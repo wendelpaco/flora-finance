@@ -779,7 +779,7 @@ export default function Home() {
         <div className="relative">
           <div
             ref={testimonialsRef}
-            className="relative flex gap-6 overflow-x-hidden scroll-smooth snap-x snap-mandatory px-6 md:px-10 lg:px-20 mt-8"
+            className="relative flex gap-6 overflow-x-auto overflow-y-hidden scroll-smooth snap-x snap-mandatory px-6 md:px-10 lg:px-20 mt-8 scrollbar-hide"
           >
             {testimonials.map((item, index) => (
               <motion.div

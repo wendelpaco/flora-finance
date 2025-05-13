@@ -168,3 +168,13 @@
 .animate-glow {
   animation: glow 4s ease-in-out infinite;
 }
+
+/* Esconde completamente as barras de rolagem horizontal e vertical */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow: -moz-scrollbars-none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
