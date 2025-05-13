@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 // import { getServerSession } from "next-auth"; // Suponho que usa next-auth
 import prisma from "../../../lib/prisma";
 import { TransactionType } from "@prisma/client";
+import { authOptions } from "@/lib/authOptions";
+import { getServerSession } from "next-auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,16 +13,16 @@ export async function GET(request: Request) {
   const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
 
   try {
-    // const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
 
-    // if (!session || !session.user?.phone) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     let user;
     try {
       user = await prisma.user.findUnique({
-        where: { phone: "5521968577262" },
+        where: { id: session.user.id },
       });
     } catch (error) {
       console.error("Erro ao buscar usuário:", error);
